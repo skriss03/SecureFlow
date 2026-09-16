@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Node
+node_modules/
+web/dist/
+web/.vite/
+
+# Runtime data (replay cache is intentionally committed under samples/, not here)
+data/projects/
+data/tmp/
+
+# Secrets
+.env
+.env.*
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+
+# OS / editor
+.DS_Store
+Thumbs.db

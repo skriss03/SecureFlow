@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SecureFlow.Core/SecureFlow.Core.csproj" />
+    <Project Path="src/SecureFlow.Ai/SecureFlow.Ai.csproj" />
+    <Project Path="src/SecureFlow.Ingest/SecureFlow.Ingest.csproj" />
+    <Project Path="src/SecureFlow.Api/SecureFlow.Api.csproj" />
+    <Project Path="src/SecureFlow.Cli/SecureFlow.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SecureFlow.Core.Tests/SecureFlow.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SecureFlow.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

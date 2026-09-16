@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "components", "flows", "trustBoundaries", "assumptions"],
+  "properties": {
+    "name": { "type": "string", "description": "Short system name, from the diagram title or repo name." },
+    "description": { "type": ["string", "null"], "description": "One or two sentences on what the system does." },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "type", "tier", "description", "props", "evidence"],
+        "properties": {
+          "id": { "type": "string", "description": "kebab-case, unique, derived from the label, e.g. orders-api" },
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["User", "Gateway", "LoadBalancer", "Cdn", "WebApp", "Api", "Worker", "Database", "Cache", "Queue", "ObjectStorage", "Identity", "Secrets", "Monitoring", "External"]
+          },
+          "tier": { "type": ["string", "null"], "description": "edge | app | data | external | platform, or null" },
+          "description": { "type": ["string", "null"] },
+          "props": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["replicas", "zones", "regions", "hasBackup", "hasHealthCheck", "autoscale", "encryptionAtRest", "publiclyExposed", "managed", "rateLimited", "auditLogging", "inputValidation", "hardcodedSecrets", "technology", "notes"],
+            "properties": {
+              "replicas": { "type": ["integer", "null"], "description": "Instance count. null when unknown; never guess." },
+              "zones": { "type": ["integer", "null"], "description": "Availability zones the component spans." },
+              "regions": { "type": ["integer", "null"] },
+              "hasBackup": { "type": ["boolean", "null"] },
+              "hasHealthCheck": { "type": ["boolean", "null"] },
+              "autoscale": { "type": ["boolean", "null"] },
+              "encryptionAtRest": { "type": ["boolean", "null"] },
+              "publiclyExposed": { "type": ["boolean", "null"], "description": "Reachable from the internet." },
+              "managed": { "type": ["boolean", "null"], "description": "Operated by a cloud provider (managed DB, managed queue)." },
+              "rateLimited": { "type": ["boolean", "null"] },
+              "auditLogging": { "type": ["boolean", "null"] },
+              "inputValidation": { "type": ["boolean", "null"] },
+              "hardcodedSecrets": { "type": ["boolean", "null"], "description": "true only with evidence of a literal credential in source or config." },
+              "technology": { "type": ["string", "null"], "description": "e.g. ASP.NET Core, PostgreSQL, Redis, RabbitMQ, nginx" },
+              "notes": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source", "path", "line", "snippet"],
+              "properties": {
+                "source": { "type": "string", "enum": ["image", "drawio", "repo", "manual", "ai"] },
+                "path": { "type": ["string", "null"], "description": "Repo-relative file path, or null for diagrams." },
+                "line": { "type": ["integer", "null"], "description": "1-based line number when known." },
+                "snippet": { "type": ["string", "null"], "description": "The exact text you read (label or code line)." }
+              }
+            }
+          }
+        }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "from", "to", "protocol", "auth", "isSync", "timeoutMs", "retries", "circuitBreaker", "encrypted", "description", "evidence"],
+        "properties": {
+          "id": { "type": "string", "description": "f1, f2, ... or from-to" },
+          "from": { "type": "string", "description": "Component id of the request initiator / producer." },
+          "to": { "type": "string", "description": "Component id of the target / consumer." },
+          "protocol": { "type": ["string", "null"], "description": "https, http, grpc, amqp, amqps, sql, tcp, ws, ..." },
+          "auth": { "type": ["string", "null"], "description": "none, apikey, basic, jwt, oauth, mtls, managed-identity, unknown" },
+          "isSync": { "type": ["boolean", "null"], "description": "true = request/response; false = message or event based." },
+          "timeoutMs": { "type": ["integer", "null"] },
+          "retries": { "type": ["integer", "null"] },
+          "circuitBreaker": { "type": ["boolean", "null"] },
+          "encrypted": { "type": ["boolean", "null"] },
+          "description": { "type": ["string", "null"] },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source", "path", "line", "snippet"],
+              "properties": {
+                "source": { "type": "string", "enum": ["image", "drawio", "repo", "manual", "ai"] },
+                "path": { "type": ["string", "null"] },
+                "line": { "type": ["integer", "null"] },
+                "snippet": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "trustBoundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "componentIds"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "componentIds": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Every inference that is not literally in the input."
+    }
+  }
+}

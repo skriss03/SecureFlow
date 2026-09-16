@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SecureFlow.Cli</RootNamespace>
+    <AssemblyName>secureflow</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SecureFlow.Core/SecureFlow.Core.csproj" />
+  </ItemGroup>
+</Project>

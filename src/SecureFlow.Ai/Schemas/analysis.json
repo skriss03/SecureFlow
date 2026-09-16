@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["executiveSummary", "businessImpact", "topRisks", "additionalFindings", "quickWins"],
+  "properties": {
+    "executiveSummary": { "type": "string", "description": "3-5 plain-language sentences for a non-technical leader." },
+    "businessImpact": { "type": "string", "description": "2-3 sentences: the most likely bad day and its user-facing effect." },
+    "topRisks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "why", "componentIds", "relatedFindingIds"],
+        "properties": {
+          "title": { "type": "string" },
+          "why": { "type": "string", "description": "Business impact in 1-2 sentences." },
+          "componentIds": { "type": "array", "items": { "type": "string" } },
+          "relatedFindingIds": { "type": "array", "items": { "type": "string" }, "description": "Ids of rule findings this risk consolidates." }
+        }
+      }
+    },
+    "additionalFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "category", "tag", "severity", "description", "rationale", "mitigation", "componentIds", "flowIds"],
+        "properties": {
+          "title": { "type": "string" },
+          "category": { "type": "string", "enum": ["Resilience", "Security"] },
+          "tag": { "type": "string", "description": "Resilience class (e.g. Idempotency, Retry storm) or STRIDE name (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege)." },
+          "severity": { "type": "string", "enum": ["Critical", "High", "Medium", "Low", "Info"] },
+          "description": { "type": "string", "description": "What is wrong in THIS model, naming components." },
+          "rationale": { "type": "string", "description": "Why it matters." },
+          "mitigation": { "type": "string" },
+          "componentIds": { "type": "array", "items": { "type": "string" } },
+          "flowIds": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "quickWins": { "type": "array", "items": { "type": "string" } }
+  }
+}

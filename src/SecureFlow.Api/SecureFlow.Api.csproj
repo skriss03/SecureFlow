@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>SecureFlow.Api</RootNamespace>
+    <UserSecretsId>secureflow-api</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SecureFlow.Core/SecureFlow.Core.csproj" />
+    <ProjectReference Include="../SecureFlow.Ai/SecureFlow.Ai.csproj" />
+    <ProjectReference Include="../SecureFlow.Ingest/SecureFlow.Ingest.csproj" />
+  </ItemGroup>
+</Project>

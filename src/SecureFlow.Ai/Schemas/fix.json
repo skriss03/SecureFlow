@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "explanation", "patch", "codeChanges", "resolvesFindingIds", "residualRisk"],
+  "properties": {
+    "summary": { "type": "string", "description": "One line." },
+    "explanation": { "type": "string", "description": "3-6 sentences for an engineer: what to change and why." },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ops"],
+      "properties": {
+        "ops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "id", "property", "value", "objectJson"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["set-component-prop", "set-flow-prop", "add-component", "add-flow", "remove-flow"] },
+              "id": { "type": ["string", "null"], "description": "Target component or flow id for set-*/remove-* ops." },
+              "property": { "type": ["string", "null"], "description": "Property name for set-* ops." },
+              "value": { "type": ["string", "number", "boolean", "null"], "description": "New value for set-* ops." },
+              "objectJson": { "type": ["string", "null"], "description": "For add-* ops: the full component or flow as a JSON string." }
+            }
+          }
+        }
+      }
+    },
+    "codeChanges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "language", "description", "snippet"],
+        "properties": {
+          "path": { "type": ["string", "null"], "description": "Repo-relative file to change, when known." },
+          "language": { "type": "string", "description": "csharp, yaml, hcl, bicep, json, nginx, bash, ..." },
+          "description": { "type": "string" },
+          "snippet": { "type": "string", "description": "Copy-pasteable code." }
+        }
+      }
+    },
+    "resolvesFindingIds": { "type": "array", "items": { "type": "string" }, "description": "Ids of findings (including the target) this change resolves." },
+    "residualRisk": { "type": "string" }
+  }
+}

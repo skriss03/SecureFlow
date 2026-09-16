@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SecureFlow.Ingest</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SecureFlow.Core/SecureFlow.Core.csproj" />
+    <ProjectReference Include="../SecureFlow.Ai/SecureFlow.Ai.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="ShopFast" id="shopfast">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Trust boundaries (containers) -->
+        <mxCell id="tb-internet" value="Internet" style="swimlane;dashed=1;fillColor=none;strokeColor=#6ea8ff;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="200" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="tb-edge" value="Edge / DMZ" style="swimlane;dashed=1;fillColor=none;strokeColor=#6ea8ff;" vertex="1" parent="1">
+          <mxGeometry x="260" y="40" width="220" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="tb-private" value="Private network (AKS)" style="swimlane;dashed=1;fillColor=none;strokeColor=#6ea8ff;" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="620" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="tb-saas" value="Third parties" style="swimlane;dashed=1;fillColor=none;strokeColor=#6ea8ff;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="40" width="200" height="500" as="geometry" />
+        </mxCell>
+
+        <!-- Components; parent = container so boundaries are derived deterministically -->
+        <mxCell id="user" value="Shopper (browser)" style="shape=mxgraph.azure.user;" vertex="1" parent="tb-internet">
+          <mxGeometry x="40" y="200" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cdn" value="CDN" style="shape=mxgraph.azure.cdn;" vertex="1" parent="tb-edge">
+          <mxGeometry x="40" y="100" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway" value="API Gateway (nginx) x2" style="shape=mxgraph.azure.application_gateway;" vertex="1" parent="tb-edge">
+          <mxGeometry x="40" y="300" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="web" value="Storefront Web x2 autoscale" style="rounded=1;" vertex="1" parent="tb-private">
+          <mxGeometry x="30" y="220" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="orders" value="Orders API x1" style="rounded=1;" vertex="1" parent="tb-private">
+          <mxGeometry x="230" y="220" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="inventory" value="Inventory API x2" style="rounded=1;" vertex="1" parent="tb-private">
+          <mxGeometry x="230" y="80" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="Notification Worker x1" style="rounded=1;" vertex="1" parent="tb-private">
+          <mxGeometry x="230" y="380" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="Orders DB (SQL Server) single zone" style="shape=cylinder3;" vertex="1" parent="tb-private">
+          <mxGeometry x="440" y="120" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cache" value="Session Cache (Redis)" style="shape=mxgraph.azure.cache;" vertex="1" parent="tb-private">
+          <mxGeometry x="30" y="380" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="payments" value="Payment Provider" style="shape=cloud;" vertex="1" parent="tb-saas">
+          <mxGeometry x="30" y="200" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="email" value="Email Service (SendGrid)" style="shape=cloud;" vertex="1" parent="tb-saas">
+          <mxGeometry x="30" y="360" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Flows -->
+        <mxCell id="f1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="user" target="cdn"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f2" value="HTTPS JWT" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="user" target="gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f3" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="cdn" target="gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f4" value="HTTP 30s timeout" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="gateway" target="web"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f5" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="web" target="orders"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f6" value="TCP" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="web" target="cache"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f7" value="SQL basic auth" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="orders" target="db"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f8" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="orders" target="inventory"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f9" value="SQL" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="inventory" target="db"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f10" value="HTTPS API key" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="orders" target="payments"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f11" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="orders" target="worker"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f12" value="HTTPS API key" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="worker" target="email"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

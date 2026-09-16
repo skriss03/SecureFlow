@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ShopFast architecture</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", Arial, sans-serif; }
+  svg { display: block; }
+  .box { fill: #fff; stroke: #1f2937; stroke-width: 2; rx: 8; }
+  .db { fill: #fff; stroke: #1f2937; stroke-width: 2; }
+  .cloud { fill: #f8fafc; stroke: #1f2937; stroke-width: 2; stroke-dasharray: 0; }
+  .label { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+  .sub { font-size: 12px; fill: #4b5563; text-anchor: middle; }
+  .edge { stroke: #374151; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+  .elabel { font-size: 11px; fill: #374151; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; }
+  .boundary { fill: none; stroke: #2563eb; stroke-width: 2; stroke-dasharray: 8 6; rx: 14; }
+  .blabel { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: .05em; }
+  .title { font-size: 22px; font-weight: 700; fill: #111827; }
+</style>
+</head>
+<body>
+<svg width="1400" height="760" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151"/>
+    </marker>
+  </defs>
+  <text x="30" y="40" class="title">ShopFast — e-commerce platform (Kubernetes, SQL Server)</text>
+
+  <!-- boundaries -->
+  <rect x="30" y="80" width="220" height="620" class="boundary"/>
+  <text x="44" y="104" class="blabel">INTERNET</text>
+  <rect x="280" y="80" width="230" height="620" class="boundary"/>
+  <text x="294" y="104" class="blabel">EDGE / DMZ</text>
+  <rect x="540" y="80" width="600" height="620" class="boundary"/>
+  <text x="554" y="104" class="blabel">PRIVATE NETWORK (AKS)</text>
+  <rect x="1170" y="80" width="210" height="620" class="boundary"/>
+  <text x="1184" y="104" class="blabel">THIRD PARTIES</text>
+
+  <!-- components -->
+  <rect x="60" y="360" width="160" height="70" class="box"/><text x="140" y="390" class="label">Shopper</text><text x="140" y="410" class="sub">browser / mobile</text>
+  <rect x="315" y="200" width="160" height="70" class="box"/><text x="395" y="230" class="label">CDN</text><text x="395" y="250" class="sub">static assets</text>
+  <rect x="315" y="440" width="160" height="70" class="box"/><text x="395" y="470" class="label">API Gateway</text><text x="395" y="490" class="sub">nginx ×2</text>
+  <rect x="570" y="360" width="160" height="70" class="box"/><text x="650" y="390" class="label">Storefront Web</text><text x="650" y="410" class="sub">ASP.NET Core ×2, autoscale</text>
+  <rect x="570" y="560" width="160" height="70" class="box"/><text x="650" y="590" class="label">Session Cache</text><text x="650" y="610" class="sub">Redis ×1</text>
+  <rect x="800" y="360" width="160" height="70" class="box"/><text x="880" y="390" class="label">Orders API</text><text x="880" y="410" class="sub">ASP.NET Core ×1</text>
+  <rect x="800" y="180" width="160" height="70" class="box"/><text x="880" y="210" class="label">Inventory API</text><text x="880" y="230" class="sub">ASP.NET Core ×2</text>
+  <rect x="800" y="560" width="160" height="70" class="box"/><text x="880" y="590" class="label">Notification Worker</text><text x="880" y="610" class="sub">.NET worker ×1</text>
+  <!-- database cylinder -->
+  <g transform="translate(1000,240)">
+    <ellipse cx="60" cy="14" rx="60" ry="14" class="db"/>
+    <path d="M0 14 v60 a60 14 0 0 0 120 0 v-60" class="db"/>
+    <text x="60" y="52" class="label">Orders DB</text>
+    <text x="60" y="70" class="sub" style="font-size:11px">SQL Server · single zone</text>
+  </g>
+  <path d="M1200 360 q-25 -30 10 -50 q10 -40 60 -30 q45 -25 65 15 q40 10 20 45 q10 40 -40 40 q-30 30 -70 10 q-40 10 -45 -30 z" class="cloud"/>
+  <text x="1275" y="352" class="label">Payments</text><text x="1275" y="372" class="sub">provider API</text>
+  <path d="M1200 590 q-25 -30 10 -50 q10 -40 60 -30 q45 -25 65 15 q40 10 20 45 q10 40 -40 40 q-30 30 -70 10 q-40 10 -45 -30 z" class="cloud"/>
+  <text x="1275" y="582" class="label">Email</text><text x="1275" y="602" class="sub">SendGrid</text>
+
+  <!-- edges -->
+  <path d="M220 380 C 260 380, 280 235, 315 235" class="edge"/><text x="268" y="300" class="elabel">HTTPS</text>
+  <path d="M220 400 C 260 400, 280 475, 315 475" class="edge"/><text x="268" y="452" class="elabel">HTTPS + JWT</text>
+  <path d="M395 270 L 395 440" class="edge"/><text x="418" y="360" class="elabel">HTTPS</text>
+  <path d="M475 475 C 520 475, 530 395, 570 395" class="edge"/><text x="522" y="425" class="elabel">HTTP, 30s timeout</text>
+  <path d="M730 395 L 800 395" class="edge"/><text x="765" y="386" class="elabel">HTTP</text>
+  <path d="M650 430 L 650 560" class="edge"/><text x="668" y="500" class="elabel">TCP</text>
+  <path d="M880 360 L 880 250" class="edge"/><text x="898" y="310" class="elabel">HTTP</text>
+  <path d="M960 380 C 990 380, 1000 340, 1040 320" class="edge"/><text x="1010" y="368" class="elabel">SQL (sa)</text>
+  <path d="M960 215 C 990 215, 1000 240, 1030 255" class="edge"/><text x="1000" y="220" class="elabel">SQL (sa)</text>
+  <path d="M960 400 L 1200 385" class="edge"/><text x="1080" y="385" class="elabel">HTTPS + API key</text>
+  <path d="M880 430 L 880 560" class="edge"/><text x="898" y="500" class="elabel">HTTP</text>
+  <path d="M960 595 L 1200 605" class="edge"/><text x="1080" y="592" class="elabel">HTTPS + API key</text>
+</svg>
+</body>
+</html>

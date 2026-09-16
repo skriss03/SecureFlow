@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/ui.tsx","./src/components/architecturegraph.tsx","./src/components/findingdetail.tsx","./src/components/findingspanel.tsx","./src/components/progresslog.tsx","./src/components/reportview.tsx","./src/components/scoregauge.tsx","./src/pages/home.tsx","./src/pages/projectpage.tsx"],"version":"5.9.3"}

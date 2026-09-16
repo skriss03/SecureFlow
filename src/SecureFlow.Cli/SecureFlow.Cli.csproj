@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SecureFlow.Core/SecureFlow.Core.csproj" />
+    <ProjectReference Include="../SecureFlow.Ingest/SecureFlow.Ingest.csproj" />
   </ItemGroup>
 </Project>

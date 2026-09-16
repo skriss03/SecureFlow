@@ -60,18 +60,34 @@ public sealed class OpenAiArchitectureAi : IArchitectureAi
 
     private async Task<string> CallAsync(RequestBuilder.Request req, UserChatMessage user, IProgress<string>? progress, CancellationToken ct)
     {
+        try
+        {
+            return await CallOnceAsync(req, user, strict: true, progress, ct);
+        }
+        catch (ClientResultException ex) when (ex.Status == 400 && ex.Message.Contains("schema", StringComparison.OrdinalIgnoreCase))
+        {
+            progress?.Report("Strict JSON schema was rejected; retrying with json_object mode.");
+            return await CallOnceAsync(req, user, strict: false, progress, ct);
+        }
+    }
+
+    private async Task<string> CallOnceAsync(RequestBuilder.Request req, UserChatMessage user, bool strict, IProgress<string>? progress, CancellationToken ct)
+    {
         var options = new ChatCompletionOptions
         {
-            ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                jsonSchemaFormatName: req.SchemaName.Replace('-', '_'),
-                jsonSchema: BinaryData.FromString(AiJson.SchemaText(req.SchemaName)),
-                jsonSchemaIsStrict: true),
+            ResponseFormat = strict
+                ? ChatResponseFormat.CreateJsonSchemaFormat(
+                    jsonSchemaFormatName: req.SchemaName.Replace('-', '_'),
+                    jsonSchema: BinaryData.FromString(AiJson.SchemaText(req.SchemaName)),
+                    jsonSchemaIsStrict: true)
+                : ChatResponseFormat.CreateJsonObjectFormat(),
         };
+        var system = strict ? req.System : req.System + "\n\nRespond with only a JSON object matching this schema:\n" + AiJson.SchemaText(req.SchemaName);
         var started = DateTimeOffset.UtcNow;
         try
         {
             ChatCompletion completion = await _client.CompleteChatAsync(
-                [new SystemChatMessage(req.System), user], options, ct);
+                [new SystemChatMessage(system), user], options, ct);
             progress?.Report($"{req.Operation} completed in {(DateTimeOffset.UtcNow - started).TotalSeconds:F0}s.");
             if (completion.FinishReason == ChatFinishReason.ContentFilter)
                 throw new AiResponseException("OpenAI content filter blocked the response.", "");

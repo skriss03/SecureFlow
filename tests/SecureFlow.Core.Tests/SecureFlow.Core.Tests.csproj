@@ -10,5 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/SecureFlow.Core/SecureFlow.Core.csproj" />
+    <ProjectReference Include="../../src/SecureFlow.Ingest/SecureFlow.Ingest.csproj" />
+    <ProjectReference Include="../../src/SecureFlow.Ai/SecureFlow.Ai.csproj" />
   </ItemGroup>
 </Project>

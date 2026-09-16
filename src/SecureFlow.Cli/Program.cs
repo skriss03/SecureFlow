@@ -85,6 +85,37 @@ switch (args_[0])
         return 0;
     }
 
+    case "digest":
+    {
+        // What the repo scanner would send to the model, without calling any model.
+        var repo = Opt("--repo");
+        if (string.IsNullOrEmpty(repo)) { Console.Error.WriteLine("--repo <path-or-url> required"); return 1; }
+        var ingest = new SecureFlow.Ingest.RepoIngest(Path.Combine(Path.GetTempPath(), "secureflow-cli"));
+        var digest = await ingest.BuildAsync(repo, Opt("--branch", null) is { Length: > 0 } b ? b : null, new Progress<string>(Console.Error.WriteLine), CancellationToken.None);
+        if (Flag("--json")) { Console.WriteLine(JsonSerializer.Serialize(digest, json)); return 0; }
+        Console.WriteLine($"{digest.RepoUrl} @ {digest.Commit ?? "n/a"} ({digest.Branch ?? "?"})");
+        Console.WriteLine($"{digest.Files.Count} of {digest.TotalFilesInRepo} files selected, {digest.IncludedBytes / 1000}k chars");
+        foreach (var f in digest.Files) Console.WriteLine($"  {f.Content.Length,7}  {f.Path}{(f.Truncated ? " (truncated)" : "")}");
+        foreach (var n in digest.SkippedNotes) Console.WriteLine("  note: " + n);
+        return 0;
+    }
+
+    case "drawio":
+    {
+        var file = Opt("--file");
+        if (string.IsNullOrEmpty(file)) { Console.Error.WriteLine("--file <diagram.drawio> required"); return 1; }
+        var model = SecureFlow.Ingest.DrawioIngest.Parse(File.ReadAllText(file), Path.GetFileName(file));
+        if (Flag("--json")) { Console.WriteLine(JsonSerializer.Serialize(model, json)); return 0; }
+        Console.WriteLine($"{model.Name}: {model.Components.Count} components, {model.Flows.Count} flows, {model.TrustBoundaries.Count} boundaries");
+        foreach (var c in model.Components) Console.WriteLine($"  [{c.Type,-13}] {c.Id,-22} replicas={c.Props.Replicas?.ToString() ?? "?"}  zones={c.Props.Zones?.ToString() ?? "?"}");
+        foreach (var f in model.Flows) Console.WriteLine($"  {f.From} -> {f.To}  {f.Protocol ?? "?"} auth={f.Auth ?? "?"} sync={f.IsSync?.ToString() ?? "?"} timeout={f.TimeoutMs?.ToString() ?? "?"}");
+        foreach (var b in model.TrustBoundaries) Console.WriteLine($"  boundary {b.Name}: {string.Join(", ", b.ComponentIds)}");
+        var findings = RuleCatalog.Evaluate(model);
+        var score = Scorer.Score(findings);
+        Console.WriteLine($"Rules: {findings.Count} findings. Resilience {score.Resilience}, Security {score.Security}.");
+        return 0;
+    }
+
     default:
         Usage();
         return 1;
@@ -96,5 +127,7 @@ static void Usage()
         secureflow analyze  [--sample shopfast|healthy | --model model.json] [--json] [--weights] [--fail-on critical|high|medium]
         secureflow simulate [--sample ... | --model ...] --kill <componentId>
         secureflow rules
+        secureflow digest   --repo <path-or-url> [--branch b] [--json]
+        secureflow drawio   --file <diagram.drawio> [--json]
         """);
 }

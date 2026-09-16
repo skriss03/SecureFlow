@@ -64,7 +64,8 @@ public static class DrawioIngest
         {
             var label = LabelOf(v);
             var style = (string?)v.Attribute("style") ?? "";
-            var slug = Slug(label);
+            var (cleanName, parenthesized) = CleanLabel(label);
+            var slug = Slug(cleanName);
             var id = slug; var k = 2;
             while (!usedIds.Add(id)) id = $"{slug}-{k++}";
             idMap[(string?)v.Attribute("id") ?? ""] = id;
@@ -72,9 +73,9 @@ public static class DrawioIngest
             var comp = new Component
             {
                 Id = id,
-                Name = label,
+                Name = cleanName,
                 Type = type,
-                Props = new ComponentProps { Technology = tech },
+                Props = new ComponentProps { Technology = tech ?? parenthesized },
                 Evidence = { new Evidence { Source = "drawio", Snippet = label } },
             };
             ApplyAnnotations(comp, label);
@@ -164,6 +165,23 @@ public static class DrawioIngest
     }
 
     private static readonly Regex Replicas = new(@"(?:x|×)\s*(\d+)|(\d+)\s*(?:replicas?|instances?|nodes?)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex AnnotationWords = new(
+        @"\b(?:x|×)\s*\d+\b|\b\d+\s*(?:replicas?|instances?|nodes?)\b|\bautoscal\w*\b|\bsingle[ -]zone\b|\bmulti[ -]az\b|\bzone[ -]redundant\b|\bgeo(?:[ -]replicated)?\b|\bmulti[ -]region\b|\bbackups?\b|\bmanaged\b|\bpublic\b|\bprivate\b|\bHA\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>"API Gateway (nginx) x2" → ("API Gateway", "nginx"). Annotations stay available for props via <see cref="ApplyAnnotations"/>.</summary>
+    private static (string Name, string? Parenthesized) CleanLabel(string label)
+    {
+        string? paren = null;
+        var m = Regex.Match(label, @"\(([^)]+)\)");
+        if (m.Success) paren = m.Groups[1].Value.Trim();
+        var name = Regex.Replace(label, @"\([^)]*\)", " ");
+        name = AnnotationWords.Replace(name, " ");
+        name = Regex.Replace(name, @"\s+", " ").Trim(' ', ',', '-', ':');
+        if (name.Length == 0) name = label;
+        return (name, paren);
+    }
 
     private static void ApplyAnnotations(Component c, string label)
     {

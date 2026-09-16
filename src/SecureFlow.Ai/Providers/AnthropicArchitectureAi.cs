@@ -64,15 +64,32 @@ public sealed class AnthropicArchitectureAi : IArchitectureAi
 
     private async Task<string> CallAsync(RequestBuilder.Request req, List<ContentBlockParam> content, IProgress<string>? progress, CancellationToken ct)
     {
+        try
+        {
+            return await CallOnceAsync(req, content, useSchema: true, progress, ct);
+        }
+        catch (AnthropicBadRequestException ex) when (ex.Message.Contains("schema", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("output_config", StringComparison.OrdinalIgnoreCase))
+        {
+            // Structured-output schema rejected (feature subset mismatch): fall back to prompt-only JSON and the tolerant parser.
+            progress?.Report("Structured output schema was rejected; retrying with prompt-only JSON.");
+            var fallback = new List<ContentBlockParam>(content)
+            {
+                new TextBlockParam { Text = "\n\nRespond with only a JSON object that matches this JSON schema, no prose:\n" + AiJson.SchemaText(req.SchemaName) },
+            };
+            return await CallOnceAsync(req, fallback, useSchema: false, progress, ct);
+        }
+    }
+
+    private async Task<string> CallOnceAsync(RequestBuilder.Request req, List<ContentBlockParam> content, bool useSchema, IProgress<string>? progress, CancellationToken ct)
+    {
         var parameters = new MessageCreateParams
         {
             Model = _options.AnthropicModel,
             MaxTokens = _options.MaxOutputTokens,
             System = req.System,
-            OutputConfig = new OutputConfig
-            {
-                Format = new JsonOutputFormat { Schema = AiJson.Schema(req.SchemaName) },
-            },
+            OutputConfig = useSchema
+                ? new OutputConfig { Format = new JsonOutputFormat { Schema = AiJson.Schema(req.SchemaName) } }
+                : null,
             Messages = [new() { Role = Role.User, Content = content }],
         };
 

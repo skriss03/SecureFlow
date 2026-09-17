@@ -90,11 +90,15 @@ public sealed class ProjectPipeline
 
         var freshIds = fresh.Select(f => f.Id).ToHashSet();
         var aiFindings = p.Findings.Where(f => f.Source == FindingSource.Ai).ToList();
-        var nowFixed = p.Findings.Where(f => f.Source == FindingSource.Rule && !freshIds.Contains(f.Id) && f.Status != FindingStatus.Fixed)
-            .Select(f => { f.Status = FindingStatus.Fixed; return f; });
-        var alreadyFixed = p.Findings.Where(f => f.Source == FindingSource.Rule && f.Status == FindingStatus.Fixed && !freshIds.Contains(f.Id));
 
-        p.Findings = fresh.Concat(aiFindings).Concat(nowFixed).Concat(alreadyFixed)
+        // Rule findings whose rule no longer fires are retired, each exactly once. This is evaluated
+        // eagerly on purpose: marking Status inside a lazy Select would make a second lazy Where
+        // match the very items the first one just changed, yielding them twice.
+        var retired = p.Findings.Where(f => f.Source == FindingSource.Rule && !freshIds.Contains(f.Id)).ToList();
+        foreach (var f in retired)
+            f.Status = FindingStatus.Fixed;
+
+        p.Findings = fresh.Concat(aiFindings).Concat(retired)
             .OrderBy(f => f.Status).ThenByDescending(f => f.Severity).ThenByDescending(f => f.Confidence).ToList();
         p.Score = Scorer.Score(p.Findings);
         p.Snapshot(action);
@@ -141,7 +145,7 @@ public sealed class ProjectPipeline
         var progress = new LogProgress(p);
         var proposal = await _ai.Ai!.ProposeFixAsync(p.Model, target, p.Findings, p.Digest, progress, ct);
         if (!proposal.ResolvesFindingIds.Contains(findingId)) proposal.ResolvesFindingIds.Insert(0, findingId);
-        p.Proposals[findingId] = proposal;
+        p.SetProposal(findingId, proposal);
         p.AddLog($"Fix proposed for \"{target.Title}\": {proposal.Summary}");
         _store.Save(p);
         return proposal;

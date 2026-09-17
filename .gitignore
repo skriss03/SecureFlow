@@ -12,8 +12,8 @@ web/dist/
 web/.vite/
 
 # Runtime data (replay cache is intentionally committed under samples/, not here)
-data/projects/
-data/tmp/
+**/data/projects/
+**/data/tmp/
 
 # Secrets
 .env

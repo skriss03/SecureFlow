@@ -33,14 +33,21 @@ public sealed class Project
     [JsonIgnore]
     public RepoDigest? Digest { get; set; }
 
-    [JsonIgnore]
-    private readonly object _logLock = new();
+    private readonly object _mutationLock = new();
+
+    // The pipeline runs on a background thread while request threads serialize this whole object
+    // (GET /api/projects/{id} and ProjectStore.Save). Adding to a List<T> that is being enumerated
+    // throws InvalidOperationException, so every collection the pipeline appends to is copy-on-write:
+    // writers swap in a new instance under the lock and readers only ever see a finished list.
+    // Readers take no lock, so they may see a list one write behind; for a progress log and a score
+    // history that is fine, and it keeps serialization off the pipeline's critical path.
 
     public void AddLog(string message, string level = "info")
     {
-        lock (_logLock)
+        var entry = new LogEntry { At = DateTimeOffset.UtcNow, Level = level, Message = message };
+        lock (_mutationLock)
         {
-            Log.Add(new LogEntry { At = DateTimeOffset.UtcNow, Level = level, Message = message });
+            Log = new List<LogEntry>(Log) { entry };
         }
         UpdatedAt = DateTimeOffset.UtcNow;
     }
@@ -48,22 +55,32 @@ public sealed class Project
     /// <summary>Entries from index <paramref name="from"/> onward, safe to call while the pipeline appends.</summary>
     public List<LogEntry> LogSince(int from)
     {
-        lock (_logLock)
-        {
-            return from >= Log.Count ? new List<LogEntry>() : Log.Skip(from).ToList();
-        }
+        var log = Log;
+        return from >= log.Count ? new List<LogEntry>() : log.Skip(from).ToList();
     }
 
     public void Snapshot(string action)
     {
-        History.Add(new HistoryPoint
+        var point = new HistoryPoint
         {
             At = DateTimeOffset.UtcNow,
             Action = action,
             Resilience = Score.Resilience,
             Security = Score.Security,
             OpenFindings = Findings.Count(f => f.Status == FindingStatus.Open),
-        });
+        };
+        lock (_mutationLock)
+        {
+            History = new List<HistoryPoint>(History) { point };
+        }
+    }
+
+    public void SetProposal(string findingId, FixProposal proposal)
+    {
+        lock (_mutationLock)
+        {
+            Proposals = new Dictionary<string, FixProposal>(Proposals) { [findingId] = proposal };
+        }
     }
 }
 

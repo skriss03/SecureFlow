@@ -4,7 +4,7 @@ public sealed class AiOptions
 {
     public const string Section = "Ai";
 
-    /// <summary>anthropic | openai</summary>
+    /// <summary>anthropic | openai | foundry</summary>
     public string Provider { get; set; } = "anthropic";
     public string AnthropicModel { get; set; } = "claude-opus-5";
     /// <summary>Verify the exact id in your OpenAI account; models are renamed often.</summary>
@@ -13,6 +13,16 @@ public sealed class AiOptions
     public string? AnthropicApiKey { get; set; }
     public string? OpenAiApiKey { get; set; }
     public int MaxOutputTokens { get; set; } = 32000;
+
+    /// <summary>
+    /// Microsoft Foundry deployment of Claude. Not a secret: the <c>&lt;resource-name&gt;</c> in
+    /// https://&lt;resource-name&gt;.services.ai.azure.com/anthropic, safe in appsettings.json.
+    /// The API key is still a secret -- reuses <see cref="AnthropicApiKey"/> / ANTHROPIC_API_KEY,
+    /// since a Foundry key is "the Anthropic key" from the app's point of view, just routed differently.
+    /// </summary>
+    public string? FoundryResourceName { get; set; }
+    /// <summary>The deployment name chosen in the Foundry portal. Used as the `model` parameter instead of AnthropicModel.</summary>
+    public string? FoundryDeploymentName { get; set; }
 
     /// <summary>Directory for the replay cache. Relative paths resolve against the content root.</summary>
     public string CacheDir { get; set; } = "data/cache";

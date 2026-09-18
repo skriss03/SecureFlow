@@ -8,6 +8,11 @@ using SecureFlow.Ingest;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// User Secrets (dotnet user-secrets) is only auto-loaded by the framework in the Development
+// environment. This is a local dev/demo tool with no launchSettings.json forcing that environment,
+// so load it explicitly here -- it is a no-op (empty) if no secrets have been set.
+builder.Configuration.AddUserSecrets<Program>(optional: true);
+
 // ----- AI provider (optional: the deterministic engine works without one) -----
 var aiOptions = builder.Configuration.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions();
 if (!Path.IsPathRooted(aiOptions.CacheDir))
@@ -22,7 +27,8 @@ builder.Services.AddSingleton(sp =>
         {
             "openai" => new OpenAiArchitectureAi(aiOptions),
             "anthropic" => new AnthropicArchitectureAi(aiOptions),
-            var other => throw new AiUnavailableException($"Unknown Ai:Provider '{other}'. Use 'anthropic' or 'openai'."),
+            "foundry" => new FoundryArchitectureAi(aiOptions),
+            var other => throw new AiUnavailableException($"Unknown Ai:Provider '{other}'. Use 'anthropic', 'openai', or 'foundry'."),
         };
         var cache = new ReplayCache(aiOptions.CacheDir, aiOptions.CacheEnabled, aiOptions.ResolvedOffline);
         log.LogInformation("AI provider: {Name}. Replay cache: {Dir} (offline-only: {Offline})", provider.Name, aiOptions.CacheDir, aiOptions.ResolvedOffline);

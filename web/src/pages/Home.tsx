@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileCode2, GitBranch, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { api } from '../api'
-import type { ProjectSummary, SampleInfo } from '../types'
+import type { Group, ProjectSummary, SampleInfo } from '../types'
 import { Button, Card, Pill, timeAgo } from '../ui'
 
-export default function Home({ aiAvailable }: { aiAvailable: boolean }) {
+export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; groups: Group[] }) {
   const nav = useNavigate()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [samples, setSamples] = useState<SampleInfo[]>([])
@@ -24,7 +24,7 @@ export default function Home({ aiAvailable }: { aiAvailable: boolean }) {
     setBusy(label); setErr(null)
     try {
       const { id } = await fn()
-      nav(`/p/${id}`)
+      nav(`/p/${id}?from=projects`)
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -102,13 +102,21 @@ export default function Home({ aiAvailable }: { aiAvailable: boolean }) {
             <div className="overflow-hidden rounded-xl border border-line">
               <table className="w-full text-sm">
                 <thead className="bg-panel text-left text-xs uppercase tracking-wide text-muted">
-                  <tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Source</th><th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Resilience</th><th className="px-4 py-2 text-right">Security</th><th className="px-4 py-2 text-right">Open</th><th className="px-4 py-2">Created</th><th /></tr>
+                  <tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Source</th><th className="px-4 py-2">Group</th><th className="px-4 py-2">Status</th><th className="px-4 py-2 text-right">Resilience</th><th className="px-4 py-2 text-right">Security</th><th className="px-4 py-2 text-right">Open</th><th className="px-4 py-2">Created</th><th /></tr>
                 </thead>
                 <tbody>
                   {projects.map(p => (
-                    <tr key={p.id} className="cursor-pointer border-t border-line hover:bg-panel" onClick={() => nav(`/p/${p.id}`)}>
+                    <tr key={p.id} className="cursor-pointer border-t border-line hover:bg-panel" onClick={() => nav(`/p/${p.id}?from=projects`)}>
                       <td className="px-4 py-2 font-medium">{p.name}</td>
                       <td className="px-4 py-2 text-muted">{p.source}</td>
+                      <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                        <select value={p.groupId ?? ''} title="Assign this project to a team group"
+                          onChange={e => api.setProjectGroup(p.id, e.target.value || null).then(refresh)}
+                          className="rounded-md border border-line bg-panel-2 px-1.5 py-0.5 text-xs text-ink outline-none focus:border-accent">
+                          <option value="">Ungrouped</option>
+                          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                      </td>
                       <td className="px-4 py-2"><Pill tone={p.status === 'Ready' ? 'ok' : p.status === 'Error' ? 'danger' : 'accent'}>{p.status}</Pill></td>
                       <td className="px-4 py-2 text-right font-mono">{p.status === 'Ready' ? p.resilience : '–'}</td>
                       <td className="px-4 py-2 text-right font-mono">{p.status === 'Ready' ? p.security : '–'}</td>

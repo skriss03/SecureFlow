@@ -20,6 +20,8 @@ public sealed class Project
     public ProjectStatus Status { get; set; } = ProjectStatus.Queued;
     public string? Error { get; set; }
     public string? AiProvider { get; set; }
+    /// <summary>Team grouping for the Group Manager dashboard. Null = ungrouped.</summary>
+    public string? GroupId { get; set; }
 
     public ArchitectureModel Model { get; set; } = new();
     public List<Finding> Findings { get; set; } = new();
@@ -100,5 +102,17 @@ public sealed class HistoryPoint
     public int OpenFindings { get; set; }
 }
 
-/// <summary>Lightweight row for the project list.</summary>
-public sealed record ProjectSummary(string Id, string Name, string Source, ProjectStatus Status, DateTimeOffset CreatedAt, int Resilience, int Security, int OpenFindings, int Components);
+/// <summary>Lightweight row for the project list and the group dashboard cards.</summary>
+public sealed record ProjectSummary(
+    string Id, string Name, string Source, ProjectStatus Status,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt,
+    int Resilience, int Security, string ResilienceGrade, string SecurityGrade,
+    int OpenFindings, Dictionary<Severity, int> OpenBySeverity, int Components,
+    string? GroupId, string? GroupName)
+{
+    public static ProjectSummary From(Project p, GroupStore groups) => new(
+        p.Id, p.Name, p.Source, p.Status, p.CreatedAt, p.UpdatedAt,
+        p.Score.Resilience, p.Score.Security, p.Score.ResilienceGrade, p.Score.SecurityGrade,
+        p.Findings.Count(f => f.Status == FindingStatus.Open), p.Score.OpenBySeverity, p.Model.Components.Count,
+        p.GroupId, p.GroupId is null ? null : groups.Get(p.GroupId)?.Name);
+}

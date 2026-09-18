@@ -1,4 +1,4 @@
-import type { BlastRadiusResult, FixProposal, Health, LogEntry, Project, ProjectStatus, ProjectSummary, RuleInfo, SampleInfo } from './types'
+import type { BlastRadiusResult, FixProposal, Group, Health, LogEntry, Project, ProjectStatus, ProjectSummary, RuleInfo, SampleInfo } from './types'
 
 async function handle<T>(res: Response): Promise<T> {
   if (res.ok) {
@@ -22,9 +22,15 @@ export const api = {
   health: () => get<Health>('/api/health'),
   rules: () => get<RuleInfo[]>('/api/rules'),
   samples: () => get<SampleInfo[]>('/api/samples'),
-  projects: () => get<ProjectSummary[]>('/api/projects'),
+  projects: (groupIds?: string[]) =>
+    get<ProjectSummary[]>(`/api/projects${groupIds?.length ? `?groupIds=${groupIds.map(encodeURIComponent).join(',')}` : ''}`),
   project: (id: string) => get<Project>(`/api/projects/${id}`),
   deleteProject: (id: string) => fetch(`/api/projects/${id}`, { method: 'DELETE' }).then(r => handle<void>(r)),
+  seedDemo: () => post<{ created: number; ids: string[]; running: boolean }>('/api/demo/seed'),
+  groups: () => get<Group[]>('/api/groups'),
+  createGroup: (name: string) => post<Group>('/api/groups', { name }),
+  deleteGroup: (id: string) => fetch(`/api/groups/${id}`, { method: 'DELETE' }).then(r => handle<void>(r)),
+  setProjectGroup: (id: string, groupId: string | null) => post<ProjectSummary>(`/api/projects/${id}/group`, { groupId }),
   fromSample: (sample: string) => post<{ id: string }>('/api/projects/from-sample', { sample }),
   fromRepo: (url: string, branch?: string) => post<{ id: string }>('/api/projects/from-repo', { url, branch: branch || null }),
   fromImage: (file: File, hint?: string) => {

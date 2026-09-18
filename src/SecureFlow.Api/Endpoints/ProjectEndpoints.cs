@@ -18,6 +18,8 @@ public static class ProjectEndpoints
     public record SimulateRequest(string ComponentId);
     public record StatusRequest(FindingStatus Status);
     public record ApplyFixRequest(string FindingId);
+    public record GroupRequest(string Name);
+    public record AssignGroupRequest(string? GroupId);
 
     private static readonly Dictionary<string, (string Name, string Description, Func<ArchitectureModel> Build)> Samples = new()
     {
@@ -41,9 +43,51 @@ public static class ProjectEndpoints
 
         api.MapGet("/samples", () => Results.Ok(Samples.Select(kv => new { id = kv.Key, name = kv.Value.Name, description = kv.Value.Description })));
 
-        api.MapGet("/projects", (ProjectStore store) => Results.Ok(store.All.Select(p => new ProjectSummary(
-            p.Id, p.Name, p.Source, p.Status, p.CreatedAt, p.Score.Resilience, p.Score.Security,
-            p.Findings.Count(f => f.Status == FindingStatus.Open), p.Model.Components.Count))));
+        // groupIds: comma-separated filter used by the Group Manager dashboard. Absent = every project.
+        api.MapGet("/projects", (string? groupIds, ProjectStore store, GroupStore groups) =>
+        {
+            var wanted = groupIds?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+            var items = store.All;
+            if (wanted is { Count: > 0 })
+                items = items.Where(p => p.GroupId is not null && wanted.Contains(p.GroupId));
+            return Results.Ok(items.Select(p => ProjectSummary.From(p, groups)));
+        });
+
+        // Creates any missing demo-portfolio project and scans it for real, in the background.
+        api.MapPost("/demo/seed", (DemoSeeder seeder) =>
+        {
+            var created = seeder.Seed();
+            return Results.Ok(new { created = created.Count, ids = created.Select(p => p.Id), running = seeder.IsRunning });
+        });
+
+        // ----- Groups -----
+        api.MapGet("/groups", (GroupStore groups) => Results.Ok(groups.All));
+
+        api.MapPost("/groups", (GroupRequest req, GroupStore groups) =>
+            string.IsNullOrWhiteSpace(req.Name)
+                ? Results.BadRequest(new { error = "name is required" })
+                : Results.Ok(groups.Add(req.Name.Trim())));
+
+        api.MapDelete("/groups/{id}", (string id, GroupStore groups, ProjectStore store) =>
+        {
+            if (!groups.Delete(id)) return Results.NotFound();
+            foreach (var p in store.All.Where(p => p.GroupId == id).ToList())
+            {
+                p.GroupId = null;
+                store.Save(p);
+            }
+            return Results.NoContent();
+        });
+
+        api.MapPost("/projects/{id}/group", (string id, AssignGroupRequest req, ProjectStore store, GroupStore groups) =>
+        {
+            var p = store.Get(id);
+            if (p is null) return Results.NotFound();
+            if (req.GroupId is not null && groups.Get(req.GroupId) is null) return Results.BadRequest(new { error = "Unknown group" });
+            p.GroupId = req.GroupId;
+            store.Save(p);
+            return Results.Ok(ProjectSummary.From(p, groups));
+        });
 
         api.MapPost("/projects/from-sample", (SampleRequest req, ProjectPipeline pipeline) =>
         {

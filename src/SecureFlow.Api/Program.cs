@@ -45,7 +45,9 @@ builder.Services.AddSingleton(sp =>
 var dataDir = builder.Configuration["Storage:DataDir"] ?? "data";
 if (!Path.IsPathRooted(dataDir)) dataDir = Path.Combine(builder.Environment.ContentRootPath, dataDir);
 builder.Services.AddSingleton<ProjectStore>();
+builder.Services.AddSingleton<GroupStore>();
 builder.Services.AddSingleton<ProjectPipeline>();
+builder.Services.AddSingleton<DemoSeeder>();
 builder.Services.AddSingleton(new RepoIngest(Path.Combine(dataDir, "tmp")));
 
 builder.Services.ConfigureHttpJsonOptions(o =>

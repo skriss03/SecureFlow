@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Bomb, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
 import { api, subscribe } from '../api'
-import type { BlastRadiusResult, Component, Finding, LogEntry, Project, ProjectStatus } from '../types'
+import { useRole } from '../role'
+import type { BlastRadiusResult, Component, Finding, Group, LogEntry, Project, ProjectStatus } from '../types'
 import { Button, Card, Pill, SeverityBadge, TypeIcon, impactColor, severityRank } from '../ui'
 import ArchitectureGraph from '../components/ArchitectureGraph'
 import FindingsPanel from '../components/FindingsPanel'
@@ -13,14 +14,21 @@ import ScoreGauge from '../components/ScoreGauge'
 
 type Tab = 'model' | 'findings' | 'report'
 
-export default function ProjectPage({ aiAvailable }: { aiAvailable: boolean }) {
+export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable: boolean; groups?: Group[] }) {
   const { id = '' } = useParams()
   const nav = useNavigate()
+  const [params] = useSearchParams()
+  const { role } = useRole()
+  // The dashboard is the landing page; engineers who came via the ingestion list go back to it.
+  const backTo = role === 'engineer' && params.get('from') === 'projects' ? '/projects' : '/'
   const [project, setProject] = useState<Project | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [status, setStatus] = useState<ProjectStatus>('Queued')
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('model')
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = params.get('tab')
+    return t === 'report' || t === 'findings' ? t : 'model'
+  })
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null)
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null)
   const [blast, setBlast] = useState<BlastRadiusResult | null>(null)
@@ -76,7 +84,7 @@ export default function ProjectPage({ aiAvailable }: { aiAvailable: boolean }) {
     return (
       <div className="h-full">
         <div className="flex items-center gap-3 border-b border-line px-5 py-3">
-          <button onClick={() => nav('/')} className="rounded p-1 text-muted hover:bg-line"><ArrowLeft size={16} /></button>
+          <button onClick={() => nav(backTo)} className="rounded p-1 text-muted hover:bg-line"><ArrowLeft size={16} /></button>
           <div className="font-semibold">{project.name}</div>
           <Pill tone={status === 'Error' ? 'danger' : 'accent'}>{status}</Pill>
         </div>
@@ -90,11 +98,15 @@ export default function ProjectPage({ aiAvailable }: { aiAvailable: boolean }) {
   return (
     <div className="flex h-full flex-col">
       <div className="no-print flex flex-wrap items-center gap-4 border-b border-line bg-panel px-5 py-3">
-        <button onClick={() => nav('/')} className="rounded p-1 text-muted hover:bg-line"><ArrowLeft size={16} /></button>
+        <button onClick={() => nav(backTo)} title={role === 'manager' ? 'Back to dashboard' : 'Back to projects'}
+          className="rounded p-1 text-muted hover:bg-line"><ArrowLeft size={16} /></button>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="truncate text-lg font-semibold">{project.name}</h1>
             <Pill>{project.source}{project.sourceRef ? ` · ${project.sourceRef}` : ''}</Pill>
+            {project.groupId && groups.find(g => g.id === project.groupId) && (
+              <Pill tone="accent">{groups.find(g => g.id === project.groupId)!.name}</Pill>
+            )}
             {project.aiProvider && project.aiProvider !== 'none' && <Pill tone="accent"><Sparkles size={11} /> {project.aiProvider}</Pill>}
           </div>
           <div className="text-xs text-muted">{project.model.components.length} components · {project.model.flows.length} flows · {project.model.trustBoundaries.length} boundaries · {project.findings.filter(f => f.status === 'Open').length} open findings</div>

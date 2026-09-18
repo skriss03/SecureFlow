@@ -74,7 +74,9 @@ public sealed class RepoIngest
             ValidateUrl(urlOrPath);
             root = Path.Combine(_workDir, "repo-" + Guid.NewGuid().ToString("N")[..8]);
             progress?.Report($"Cloning {urlOrPath}{(branch is null ? "" : $" ({branch})")}...");
-            var args = new List<string> { "clone", "--depth", "1", "--quiet" };
+            // core.longpaths: without it, checkout fails on Windows for repos with paths over MAX_PATH
+            // (gitea's mock fixtures, for one). Harmless everywhere else.
+            var args = new List<string> { "-c", "core.longpaths=true", "clone", "--depth", "1", "--quiet" };
             if (!string.IsNullOrWhiteSpace(branch)) { args.Add("--branch"); args.Add(branch); }
             args.Add(urlOrPath); args.Add(root);
             var (code, _, err) = await RunGitAsync(args, _workDir, ct);

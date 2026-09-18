@@ -65,15 +65,20 @@ export interface HistoryPoint { at: string; action: string; resilience: number; 
 
 export interface Project {
   id: string; name: string; createdAt: string; updatedAt: string; source: string; sourceRef?: string | null
-  status: ProjectStatus; error?: string | null; aiProvider?: string | null
+  status: ProjectStatus; error?: string | null; aiProvider?: string | null; groupId?: string | null
   model: ArchitectureModel; findings: Finding[]; score: ScoreCard; analysis?: AiAnalysis | null
   history: HistoryPoint[]; log: LogEntry[]; proposals: Record<string, FixProposal>
 }
 
 export interface ProjectSummary {
-  id: string; name: string; source: string; status: ProjectStatus; createdAt: string
-  resilience: number; security: number; openFindings: number; components: number
+  id: string; name: string; source: string; status: ProjectStatus
+  createdAt: string; updatedAt: string
+  resilience: number; security: number; resilienceGrade: string; securityGrade: string
+  openFindings: number; openBySeverity: Record<Severity, number>; components: number
+  groupId?: string | null; groupName?: string | null
 }
+
+export interface Group { id: string; name: string }
 
 export type ImpactLevel = 'Killed' | 'Down' | 'Degraded' | 'Ok'
 export interface ComponentImpact { componentId: string; name: string; level: ImpactLevel; reason: string; via: string[] }

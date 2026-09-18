@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NorthBank Payments architecture</title>
+<style>
+  body { margin: 0; background: #fff; font-family: "Segoe UI", Arial, sans-serif; }
+  svg { display: block; }
+  .box { fill: #fff; stroke: #1f2937; stroke-width: 2; rx: 8; }
+  .db { fill: #fff; stroke: #1f2937; stroke-width: 2; }
+  .cloud { fill: #f8fafc; stroke: #1f2937; stroke-width: 2; }
+  .label { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+  .sub { font-size: 12px; fill: #4b5563; text-anchor: middle; }
+  .edge { stroke: #374151; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+  .elabel { font-size: 11px; fill: #374151; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; }
+  .boundary { fill: none; stroke: #2563eb; stroke-width: 2; stroke-dasharray: 8 6; rx: 14; }
+  .blabel { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: .05em; }
+  .title { font-size: 22px; font-weight: 700; fill: #111827; }
+</style>
+</head>
+<body>
+<svg width="1400" height="760" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151"/>
+    </marker>
+  </defs>
+  <text x="30" y="40" class="title">NorthBank Payments — transfer &amp; settlement platform (AKS, PostgreSQL)</text>
+
+  <!-- boundaries -->
+  <rect x="30" y="80" width="220" height="620" class="boundary"/>
+  <text x="44" y="104" class="blabel">INTERNET</text>
+  <rect x="280" y="80" width="230" height="620" class="boundary"/>
+  <text x="294" y="104" class="blabel">EDGE / DMZ</text>
+  <rect x="540" y="80" width="620" height="620" class="boundary"/>
+  <text x="554" y="104" class="blabel">PRIVATE NETWORK (AKS)</text>
+  <rect x="1180" y="80" width="200" height="620" class="boundary"/>
+  <text x="1194" y="104" class="blabel">THIRD PARTIES</text>
+
+  <!-- components -->
+  <rect x="60" y="360" width="160" height="70" class="box"/>
+  <text x="140" y="390" class="label">Customer</text><text x="140" y="410" class="sub">mobile / web</text>
+
+  <rect x="315" y="200" width="160" height="70" class="box"/>
+  <text x="395" y="228" class="label">CDN</text><text x="395" y="248" class="sub">static assets · managed</text>
+
+  <rect x="315" y="440" width="160" height="70" class="box"/>
+  <text x="395" y="466" class="label">API Gateway</text><text x="395" y="484" class="sub">nginx ×2 · WAF</text>
+  <text x="395" y="500" class="sub">rate limited</text>
+
+  <rect x="570" y="160" width="160" height="70" class="box"/>
+  <text x="650" y="188" class="label">Identity Service</text><text x="650" y="208" class="sub">OAuth2 ×2 · TLS</text>
+
+  <rect x="570" y="360" width="160" height="70" class="box"/>
+  <text x="650" y="386" class="label">Transfers API</text><text x="650" y="404" class="sub">ASP.NET ×3</text>
+  <text x="650" y="420" class="sub">autoscale · health check</text>
+
+  <rect x="570" y="560" width="160" height="70" class="box"/>
+  <text x="650" y="586" class="label">Fraud Scoring</text><text x="650" y="604" class="sub">python ×1 · single zone</text>
+  <text x="650" y="620" class="sub">no health check</text>
+
+  <rect x="800" y="160" width="160" height="70" class="box"/>
+  <text x="880" y="188" class="label">Event Queue</text><text x="880" y="208" class="sub">Kafka ×3 · multi-AZ</text>
+
+  <rect x="800" y="360" width="160" height="70" class="box"/>
+  <text x="880" y="386" class="label">Payment Orchestrator</text><text x="880" y="404" class="sub">ASP.NET ×2</text>
+  <text x="880" y="420" class="sub">no circuit breaker</text>
+
+  <rect x="800" y="560" width="160" height="70" class="box"/>
+  <text x="880" y="586" class="label">Notification Worker</text><text x="880" y="606" class="sub">.NET worker ×1</text>
+
+  <!-- ledger database -->
+  <g transform="translate(990,470)">
+    <ellipse cx="60" cy="14" rx="60" ry="14" class="db"/>
+    <path d="M0 14 v60 a60 14 0 0 0 120 0 v-60" class="db"/>
+    <text x="60" y="46" class="label">Ledger DB</text>
+    <text x="60" y="63" class="sub" style="font-size:11px">PostgreSQL · replica</text>
+    <text x="60" y="77" class="sub" style="font-size:11px">multi-AZ · PITR backup</text>
+  </g>
+
+  <!-- third parties -->
+  <path d="M1200 310 q-25 -30 10 -50 q10 -40 60 -30 q45 -25 65 15 q40 10 20 45 q10 40 -40 40 q-30 30 -70 10 q-40 10 -45 -30 z" class="cloud"/>
+  <text x="1275" y="300" class="label">Card Network</text><text x="1275" y="320" class="sub">settlement API</text>
+
+  <path d="M1200 570 q-25 -30 10 -50 q10 -40 60 -30 q45 -25 65 15 q40 10 20 45 q10 40 -40 40 q-30 30 -70 10 q-40 10 -45 -30 z" class="cloud"/>
+  <text x="1275" y="560" class="label">SMS Provider</text><text x="1275" y="580" class="sub">alerts</text>
+
+  <!-- flows -->
+  <path d="M220 380 L310 255" class="edge"/><text x="258" y="305" class="elabel">https</text>
+  <path d="M220 410 L310 465" class="edge"/><text x="258" y="452" class="elabel">https</text>
+
+  <path d="M475 452 L566 215" class="edge"/><text x="512" y="325" class="elabel">oauth2 · tls</text>
+  <path d="M475 472 L566 398" class="edge"/><text x="516" y="447" class="elabel">https · jwt</text>
+
+  <path d="M650 434 L650 556" class="edge"/><text x="650" y="500" class="elabel">http · no auth</text>
+  <path d="M734 392 L796 392" class="edge"/><text x="765" y="381" class="elabel">https</text>
+
+  <path d="M726 428 C 800 480, 900 495, 986 505" class="edge"/><text x="856" y="510" class="elabel">tls · sql</text>
+
+  <path d="M880 356 L880 234" class="edge"/><text x="880" y="300" class="elabel">amqp</text>
+  <path d="M800 200 C 762 300, 762 500, 798 585" class="edge"/><text x="771" y="478" class="elabel">amqp</text>
+
+  <path d="M962 382 L1204 330" class="edge"/><text x="1080" y="344" class="elabel">https · sync</text>
+  <path d="M962 592 L1204 580" class="edge"/><text x="1082" y="575" class="elabel">https · apikey</text>
+</svg>
+</body>
+</html>

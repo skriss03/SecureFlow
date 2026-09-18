@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Download, FolderKanban, Gauge, ListChecks, Loader2, Plus, ShieldAlert } from 'lucide-react'
 import { api } from '../api'
-import { useRole } from '../role'
 import type { Group, ProjectSummary } from '../types'
 import { Card } from '../ui'
 import ProjectCard, { scoreColor } from '../components/ProjectCard'
@@ -32,7 +31,6 @@ function Stat({ icon, label, value, color, alert }: {
 }
 
 export default function Dashboard() {
-  const { managedGroupIds } = useRole()
   const [groups, setGroups] = useState<Group[]>([])
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -40,14 +38,8 @@ export default function Dashboard() {
   const [sort, setSort] = useState<Sort>('portfolio')
   const [seeding, setSeeding] = useState(false)
 
-  // No groups picked = the whole portfolio. Managers narrow it from the header switcher.
-  const scope = managedGroupIds.length ? managedGroupIds : undefined
-  const scopeKey = scope?.join(',') ?? ''
-
   const load = useCallback(() =>
-    api.projects(scope).then(setProjects).catch(e => setErr((e as Error).message)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scopeKey])
+    api.projects().then(setProjects).catch(e => setErr((e as Error).message)), [])
 
   useEffect(() => { api.groups().then(setGroups).catch(() => {}) }, [])
   useEffect(() => { setProjects(null); setErr(null); load() }, [load])
@@ -64,7 +56,7 @@ export default function Dashboard() {
 
   useEffect(() => { if (seeding && pending) setSeeding(false) }, [seeding, pending])
 
-  const scopeGroups = managedGroupIds.length ? groups.filter(g => managedGroupIds.includes(g.id)) : groups
+  const scopeGroups = groups
 
   const shown = useMemo(() => {
     const list = activeGroup ? all.filter(p => p.groupId === activeGroup) : [...all]

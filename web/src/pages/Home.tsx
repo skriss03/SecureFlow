@@ -9,6 +9,7 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
   const nav = useNavigate()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [samples, setSamples] = useState<SampleInfo[]>([])
+  const [sampleImages, setSampleImages] = useState<SampleInfo[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [repoUrl, setRepoUrl] = useState('')
@@ -18,7 +19,11 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
   const drawioRef = useRef<HTMLInputElement>(null)
 
   const refresh = () => api.projects().then(setProjects).catch(() => {})
-  useEffect(() => { refresh(); api.samples().then(setSamples).catch(() => {}) }, [])
+  useEffect(() => {
+    refresh()
+    api.samples().then(setSamples).catch(() => {})
+    api.sampleImages().then(setSampleImages).catch(() => {})
+  }, [])
 
   async function run(label: string, fn: () => Promise<{ id: string }>) {
     setBusy(label); setErr(null)
@@ -57,6 +62,19 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
               {busy === 'image' ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />} Upload image
             </Button>
             {!aiAvailable && <div className="mt-2 text-xs text-medium">Requires an AI key (ANTHROPIC_API_KEY or OPENAI_API_KEY).</div>}
+            {sampleImages.length > 0 && (
+              <div className="mt-4 border-t border-line pt-3">
+                <div className="mb-1.5 text-xs uppercase tracking-wide text-muted">Or try a sample</div>
+                <div className="flex flex-wrap gap-2">
+                  {sampleImages.map(s => (
+                    <Button key={s.id} variant="ghost" title={s.description} disabled={!aiAvailable || busy !== null}
+                      onClick={() => run(s.id, () => api.fromSampleImage(s.id, hint))}>
+                      {busy === s.id && <Loader2 size={14} className="animate-spin" />}{s.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
 
           <Card className="p-4">

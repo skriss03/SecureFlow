@@ -22,6 +22,9 @@ export const api = {
   health: () => get<Health>('/api/health'),
   rules: () => get<RuleInfo[]>('/api/rules'),
   samples: () => get<SampleInfo[]>('/api/samples'),
+  sampleImages: () => get<SampleInfo[]>('/api/sample-images'),
+  fromSampleImage: (sample: string, hint?: string) =>
+    post<{ id: string }>('/api/projects/from-sample-image', { sample, hint: hint || null }),
   projects: (groupIds?: string[]) =>
     get<ProjectSummary[]>(`/api/projects${groupIds?.length ? `?groupIds=${groupIds.map(encodeURIComponent).join(',')}` : ''}`),
   project: (id: string) => get<Project>(`/api/projects/${id}`),

@@ -20,6 +20,21 @@ public static class ProjectEndpoints
     public record ApplyFixRequest(string FindingId);
     public record GroupRequest(string Name);
     public record AssignGroupRequest(string? GroupId);
+    public record SampleImageRequest(string Sample, string? Hint);
+
+    /// <summary>Architecture images shipped in samples/, so the vision path can be demoed without a file to hand.</summary>
+    private static readonly Dictionary<string, (string Name, string Description, string File, string MediaType)> SampleImages = new()
+    {
+        ["shopfast-diagram"] = ("ShopFast diagram", "A clean architecture diagram of the flawed ShopFast platform, read by the vision model.", "diagram.png", "image/png"),
+        ["payments-platform"] = ("NorthBank Payments", "A retail banking transfer and settlement platform: mostly sound, with a single-instance fraud service and an unauthenticated internal hop.", "payments-platform.png", "image/png"),
+    };
+
+    private static string SamplePath(IHostEnvironment env, IConfiguration config, string file)
+    {
+        var dir = config["Storage:SamplesDir"] ?? Path.Combine("..", "..", "samples");
+        if (!Path.IsPathRooted(dir)) dir = Path.Combine(env.ContentRootPath, dir);
+        return Path.GetFullPath(Path.Combine(dir, file));
+    }
 
     private static readonly Dictionary<string, (string Name, string Description, Func<ArchitectureModel> Build)> Samples = new()
     {
@@ -42,6 +57,24 @@ public static class ProjectEndpoints
         api.MapGet("/rules", () => Results.Ok(RuleCatalog.Describe()));
 
         api.MapGet("/samples", () => Results.Ok(Samples.Select(kv => new { id = kv.Key, name = kv.Value.Name, description = kv.Value.Description })));
+
+        // Only advertise sample images whose file is actually present, so the UI hides them otherwise.
+        api.MapGet("/sample-images", (IHostEnvironment env, IConfiguration config) => Results.Ok(
+            SampleImages.Where(kv => File.Exists(SamplePath(env, config, kv.Value.File)))
+                        .Select(kv => new { id = kv.Key, name = kv.Value.Name, description = kv.Value.Description })));
+
+        api.MapPost("/projects/from-sample-image", async (SampleImageRequest req, ProjectPipeline pipeline, AiRegistry ai, IHostEnvironment env, IConfiguration config) =>
+        {
+            if (!ai.Available) return Results.Problem(statusCode: 503, title: "AI provider unavailable", detail: ai.Error);
+            if (!SampleImages.TryGetValue(req.Sample, out var s)) return Results.NotFound(new { error = "Unknown sample image" });
+            var path = SamplePath(env, config, s.File);
+            if (!File.Exists(path)) return Results.NotFound(new { error = $"Sample image is missing: {s.File}" });
+
+            var bytes = await File.ReadAllBytesAsync(path);
+            var p = new Project { Name = s.Name, Source = "image", SourceRef = s.File };
+            pipeline.Start(p, (progress, ct) => ai.Ai!.ExtractFromImageAsync(bytes, s.MediaType, req.Hint, progress, ct));
+            return Results.Accepted($"/api/projects/{p.Id}", new { id = p.Id });
+        });
 
         // groupIds: comma-separated filter used by the Group Manager dashboard. Absent = every project.
         api.MapGet("/projects", (string? groupIds, ProjectStore store, GroupStore groups) =>

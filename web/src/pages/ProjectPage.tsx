@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Bomb, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
 import { api, subscribe } from '../api'
-import { useRole } from '../role'
 import type { BlastRadiusResult, Component, Finding, Group, LogEntry, Project, ProjectStatus } from '../types'
 import { Button, Card, Pill, SeverityBadge, TypeIcon, impactColor, severityRank } from '../ui'
 import ArchitectureGraph from '../components/ArchitectureGraph'
@@ -18,9 +17,8 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
   const { id = '' } = useParams()
   const nav = useNavigate()
   const [params] = useSearchParams()
-  const { role } = useRole()
-  // The dashboard is the landing page; engineers who came via the ingestion list go back to it.
-  const backTo = role === 'engineer' && params.get('from') === 'projects' ? '/projects' : '/'
+  // The dashboard is the landing page; arriving from the ingestion list goes back there instead.
+  const backTo = params.get('from') === 'projects' ? '/projects' : '/'
   const [project, setProject] = useState<Project | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [status, setStatus] = useState<ProjectStatus>('Queued')
@@ -98,7 +96,7 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
   return (
     <div className="flex h-full flex-col">
       <div className="no-print flex flex-wrap items-center gap-4 border-b border-line bg-panel px-5 py-3">
-        <button onClick={() => nav(backTo)} title={role === 'manager' ? 'Back to dashboard' : 'Back to projects'}
+        <button onClick={() => nav(backTo)} title={backTo === '/' ? 'Back to dashboard' : 'Back to projects'}
           className="rounded p-1 text-muted hover:bg-line"><ArrowLeft size={16} /></button>
         <div className="min-w-0">
           <div className="flex items-center gap-2">

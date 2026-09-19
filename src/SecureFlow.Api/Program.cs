@@ -48,6 +48,8 @@ builder.Services.AddSingleton<ProjectStore>();
 builder.Services.AddSingleton<GroupStore>();
 builder.Services.AddSingleton<ProjectPipeline>();
 builder.Services.AddSingleton<DemoSeeder>();
+builder.Services.AddHttpClient<GitHostDiscovery>();
+builder.Services.AddSingleton<OrgScanner>();
 builder.Services.AddSingleton(new RepoIngest(Path.Combine(dataDir, "tmp")));
 
 builder.Services.ConfigureHttpJsonOptions(o =>

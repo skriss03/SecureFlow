@@ -12,6 +12,7 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
   const [sampleImages, setSampleImages] = useState<SampleInfo[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [repoUrl, setRepoUrl] = useState('')
   const [branch, setBranch] = useState('')
   const [hint, setHint] = useState('')
@@ -25,11 +26,37 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
     api.sampleImages().then(setSampleImages).catch(() => {})
   }, [])
 
+  // Keep the list live while an org scan (or any scan) is still working through its queue.
+  useEffect(() => {
+    if (!projects.some(p => p.status !== 'Ready' && p.status !== 'Error')) return
+    const t = setInterval(refresh, 3000)
+    return () => clearInterval(t)
+  }, [projects])
+
   async function run(label: string, fn: () => Promise<{ id: string }>) {
-    setBusy(label); setErr(null)
+    setBusy(label); setErr(null); setNotice(null)
     try {
       const { id } = await fn()
       nav(`/p/${id}?from=projects`)
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function runRepo() {
+    setBusy('repo'); setErr(null); setNotice(null)
+    try {
+      const res = await api.fromRepo(repoUrl.trim(), branch.trim() || undefined)
+      if ('ids' in res) {
+        // Org/user root: many projects were queued at once, not one to jump into.
+        setNotice(`Scanning ${res.count} repositories under ${res.owner}. They'll appear below as each finishes.`)
+        setRepoUrl('')
+        refresh()
+      } else {
+        nav(`/p/${res.id}?from=projects`)
+      }
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -49,6 +76,7 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
         </div>
 
         {err && <div className="mb-4 rounded-lg border border-critical/40 bg-critical/10 px-3 py-2 text-sm text-critical">{err}</div>}
+        {notice && <div className="mb-4 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent">{notice}</div>}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="p-4">
@@ -79,12 +107,16 @@ export default function Home({ aiAvailable, groups }: { aiAvailable: boolean; gr
 
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 font-medium"><GitBranch size={18} className="text-accent" /> Git repository</div>
-            <p className="mb-3 text-xs text-muted">Shallow-clones, digests deployment and config files, and reconstructs the architecture with file:line evidence.</p>
-            <input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/org/repo.git or a local path"
+            <p className="mb-3 text-xs text-muted">
+              Shallow-clones, digests deployment and config files, and reconstructs the architecture with file:line evidence.
+              Point it at a GitHub org or user instead of one repo (e.g. <code className="text-ink">github.com/acme</code>) to scan every
+              repository under it — up to 20, most-recently-active first, skipping forks and archives.
+            </p>
+            <input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/org/repo.git, an org/user URL, or a local path"
               className="mb-2 w-full rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm outline-none focus:border-accent" />
-            <input value={branch} onChange={e => setBranch(e.target.value)} placeholder="branch (optional)"
+            <input value={branch} onChange={e => setBranch(e.target.value)} placeholder="branch (optional, single repo only)"
               className="mb-3 w-full rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm outline-none focus:border-accent" />
-            <Button onClick={() => run('repo', () => api.fromRepo(repoUrl.trim(), branch.trim() || undefined))} disabled={!aiAvailable || busy !== null || !repoUrl.trim()}>
+            <Button onClick={runRepo} disabled={!aiAvailable || busy !== null || !repoUrl.trim()}>
               {busy === 'repo' ? <Loader2 size={14} className="animate-spin" /> : <GitBranch size={14} />} Scan repository
             </Button>
           </Card>

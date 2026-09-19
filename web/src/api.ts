@@ -35,7 +35,9 @@ export const api = {
   deleteGroup: (id: string) => fetch(`/api/groups/${id}`, { method: 'DELETE' }).then(r => handle<void>(r)),
   setProjectGroup: (id: string, groupId: string | null) => post<ProjectSummary>(`/api/projects/${id}/group`, { groupId }),
   fromSample: (sample: string) => post<{ id: string }>('/api/projects/from-sample', { sample }),
-  fromRepo: (url: string, branch?: string) => post<{ id: string }>('/api/projects/from-repo', { url, branch: branch || null }),
+  // A root org/user URL (no repo segment) fans out into multiple projects instead of one.
+  fromRepo: (url: string, branch?: string) =>
+    post<{ id: string } | { ids: string[]; count: number; owner: string }>('/api/projects/from-repo', { url, branch: branch || null }),
   fromImage: (file: File, hint?: string) => {
     const form = new FormData()
     form.append('file', file)

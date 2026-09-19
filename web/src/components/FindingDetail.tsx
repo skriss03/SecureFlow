@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Loader2, ShieldOff, Sparkles, Wrench, X } from 'lucide-react'
 import { api } from '../api'
 import type { ArchitectureModel, Finding, FixProposal, Project } from '../types'
 import { Button, Pill, SeverityBadge } from '../ui'
 
-export default function FindingDetail({ project, finding, aiAvailable, onClose, onProjectChanged, onFocusComponent }: {
-  project: Project; finding: Finding; aiAvailable: boolean; onClose: () => void
+export default function FindingDetail({ project, finding, aiAvailable, autoPropose, onClose, onProjectChanged, onFocusComponent }: {
+  project: Project; finding: Finding; aiAvailable: boolean; autoPropose?: boolean; onClose: () => void
   onProjectChanged: (p: Project, note?: string) => void; onFocusComponent: (id: string) => void
 }) {
   const model: ArchitectureModel = project.model
@@ -20,12 +20,17 @@ export default function FindingDetail({ project, finding, aiAvailable, onClose, 
     setBusy('fix'); setErr(null)
     try { setProposal(await api.proposeFix(project.id, finding.id)) } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
+
+  // The "Fix" button in a findings list jumps straight here and requests the proposal immediately,
+  // so it's one click end-to-end instead of "open the finding, then click Propose fix" as two.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (autoPropose && !existing && finding.status === 'Open' && aiAvailable) propose() }, [])
   async function apply() {
     setBusy('apply'); setErr(null)
     try {
       const before = project.score
       const p = await api.applyFix(project.id, finding.id)
-      onProjectChanged(p, `Fix applied. Resilience ${before.resilience} → ${p.score.resilience}, Security ${before.security} → ${p.score.security}.`)
+      onProjectChanged(p, `Model updated, not the repo. Resilience ${before.resilience} → ${p.score.resilience}, Security ${before.security} → ${p.score.security}.`)
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
   async function setStatus(status: 'Open' | 'Accepted') {
@@ -83,6 +88,12 @@ export default function FindingDetail({ project, finding, aiAvailable, onClose, 
             <div className="rounded-lg border border-accent/40 bg-accent/5 p-3">
               <div className="font-medium">{proposal.summary}</div>
               <p className="mt-1 text-muted">{proposal.explanation}</p>
+
+              {proposal.codeChanges.length > 0 && (
+                <div className="mt-3 rounded-md border border-line bg-panel-2/60 px-2.5 py-1.5 text-[11px] text-muted">
+                  These are suggested edits for you to make in the actual repository. SecureFlow never commits, pushes, or opens a PR — copy what you need.
+                </div>
+              )}
               {proposal.codeChanges.map((c, i) => (
                 <div key={i} className="mt-3">
                   <div className="mb-1 text-xs text-muted">{c.description}{c.path ? <span className="ml-1 font-mono text-accent">{c.path}</span> : null}</div>
@@ -90,7 +101,8 @@ export default function FindingDetail({ project, finding, aiAvailable, onClose, 
                 </div>
               ))}
               <div className="mt-3 text-xs text-muted">
-                Model changes: {proposal.patch.ops.length === 0 ? 'none' : proposal.patch.ops.map(o => `${o.kind}${o.id ? ` ${o.id}` : ''}${o.property ? `.${o.property}=${JSON.stringify(o.value)}` : ''}`).join('; ')}
+                "Apply fix" below only updates SecureFlow's internal model and re-scores against it — it does not touch the repository.{' '}
+                {proposal.patch.ops.length === 0 ? 'No model changes for this proposal.' : 'Model changes: ' + proposal.patch.ops.map(o => `${o.kind}${o.id ? ` ${o.id}` : ''}${o.property ? `.${o.property}=${JSON.stringify(o.value)}` : ''}`).join('; ')}
               </div>
               {proposal.resolvesFindingIds.length > 1 && <div className="mt-1 text-xs text-ok">Also resolves {proposal.resolvesFindingIds.length - 1} related finding(s).</div>}
               {proposal.residualRisk && <div className="mt-1 text-xs text-muted">Residual risk: {proposal.residualRisk}</div>}
@@ -109,8 +121,9 @@ export default function FindingDetail({ project, finding, aiAvailable, onClose, 
         )}
         {finding.status === 'Open' && proposal && (
           <>
-            <Button onClick={apply} disabled={busy !== null || proposal.patch.ops.length === 0} title={proposal.patch.ops.length === 0 ? 'This proposal has no model changes to apply' : ''}>
-              {busy === 'apply' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Apply fix &amp; re-score
+            <Button onClick={apply} disabled={busy !== null || proposal.patch.ops.length === 0}
+              title={proposal.patch.ops.length === 0 ? 'This proposal has no model changes to apply' : "Updates SecureFlow's model and re-scores it — does not change the repository"}>
+              {busy === 'apply' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Apply to model &amp; re-score
             </Button>
             <Button variant="ghost" onClick={propose} disabled={busy !== null}>Regenerate</Button>
           </>

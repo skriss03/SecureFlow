@@ -109,6 +109,8 @@ public static class ReportBuilder
         {
             sb.AppendLine("## Fixed during this session");
             sb.AppendLine();
+            sb.AppendLine("_Applied to SecureFlow's architecture model and re-scored, not committed to the repository. Each entry's code suggestion under the finding is what an engineer applies by hand._");
+            sb.AppendLine();
             foreach (var f in fixedOnes) sb.AppendLine($"- ~~{f.Title}~~: {f.Description}");
             sb.AppendLine();
         }

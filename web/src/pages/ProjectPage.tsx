@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Bomb, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
+import { ArrowLeft, Bomb, Loader2, RefreshCw, Sparkles, Wrench, X } from 'lucide-react'
 import { api, subscribe } from '../api'
 import type { BlastRadiusResult, Component, Finding, Group, LogEntry, Project, ProjectStatus } from '../types'
 import { Button, Card, Pill, SeverityBadge, TypeIcon, impactColor, severityRank } from '../ui'
@@ -28,6 +28,7 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
     return t === 'report' || t === 'findings' ? t : 'model'
   })
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null)
+  const [autoProposeId, setAutoProposeId] = useState<string | null>(null)
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null)
   const [blast, setBlast] = useState<BlastRadiusResult | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -66,6 +67,8 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
 
   const focusComponent = (cid: string) => { setTab('model'); setSelectedComponent(cid); setBlast(null) }
   const selectFinding = (f: Finding) => { setSelectedFinding(f); setBlast(null) }
+  // "Fix" wherever a finding is listed: jump to its detail panel and request a proposal immediately.
+  const fixFinding = (f: Finding) => { setTab('findings'); setSelectedFinding(f); setBlast(null); setAutoProposeId(f.id) }
 
   const first = project?.history?.[0]
   const delta = project && first ? { r: project.score.resilience - first.resilience, s: project.score.security - first.security } : undefined
@@ -144,7 +147,8 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
               {blast ? (
                 <BlastPanel blast={blast} onClose={() => setBlast(null)} />
               ) : comp ? (
-                <ComponentPanel comp={comp} findings={componentFindings} onSimulate={() => simulate(comp.id)} onSelectFinding={f => { selectFinding(f); setTab('findings') }} onClose={() => setSelectedComponent(null)} />
+                <ComponentPanel comp={comp} findings={componentFindings} aiAvailable={aiAvailable} onSimulate={() => simulate(comp.id)}
+                  onSelectFinding={f => { selectFinding(f); setTab('findings') }} onFix={fixFinding} onClose={() => setSelectedComponent(null)} />
               ) : (
                 <OverviewPanel project={project} onFocus={ids => { setSelectedComponent(ids[0] ?? null) }} onSimulate={simulate} />
               )}
@@ -155,11 +159,13 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
         {tab === 'findings' && (
           <div className="flex h-full">
             <div className={`min-w-0 border-r border-line ${selectedFinding ? 'w-[46%]' : 'flex-1'}`}>
-              <FindingsPanel findings={project.findings} model={project.model} selectedId={selectedFinding?.id ?? null} onSelect={selectFinding} />
+              <FindingsPanel findings={project.findings} model={project.model} selectedId={selectedFinding?.id ?? null} aiAvailable={aiAvailable}
+                onSelect={selectFinding} onFix={fixFinding} />
             </div>
             {selectedFinding && (
               <div className="min-w-0 flex-1 bg-panel">
                 <FindingDetail key={selectedFinding.id + project.updatedAt} project={project} finding={selectedFinding} aiAvailable={aiAvailable}
+                  autoPropose={autoProposeId === selectedFinding.id}
                   onClose={() => setSelectedFinding(null)} onProjectChanged={onProjectChanged} onFocusComponent={focusComponent} />
               </div>
             )}
@@ -226,8 +232,9 @@ function OverviewPanel({ project, onFocus, onSimulate }: { project: Project; onF
   )
 }
 
-function ComponentPanel({ comp, findings, onSimulate, onSelectFinding, onClose }: {
-  comp: Component; findings: Finding[]; onSimulate: () => void; onSelectFinding: (f: Finding) => void; onClose: () => void
+function ComponentPanel({ comp, findings, aiAvailable, onSimulate, onSelectFinding, onFix, onClose }: {
+  comp: Component; findings: Finding[]; aiAvailable: boolean; onSimulate: () => void
+  onSelectFinding: (f: Finding) => void; onFix: (f: Finding) => void; onClose: () => void
 }) {
   const p = comp.props
   const rows: [string, unknown][] = [
@@ -271,7 +278,15 @@ function ComponentPanel({ comp, findings, onSimulate, onSelectFinding, onClose }
       <ul className="space-y-1">
         {findings.map(f => (
           <li key={f.id} onClick={() => onSelectFinding(f)} className="flex cursor-pointer items-center gap-2 rounded-md border border-line px-2 py-1.5 hover:border-accent">
-            <SeverityBadge severity={f.severity} small /><span className="truncate text-xs">{f.title}</span>
+            <SeverityBadge severity={f.severity} small /><span className="flex-1 truncate text-xs">{f.title}</span>
+            <button
+              onClick={e => { e.stopPropagation(); onFix(f) }}
+              disabled={!aiAvailable}
+              title={aiAvailable ? 'Propose a fix with AI' : 'Needs an AI provider'}
+              className="flex shrink-0 items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Wrench size={10} /> Fix
+            </button>
           </li>
         ))}
         {findings.length === 0 && <li className="text-xs text-muted">None. Nice.</li>}

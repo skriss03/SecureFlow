@@ -179,10 +179,26 @@ public static class ProjectEndpoints
             return Results.Accepted($"/api/projects/{p.Id}", new { id = p.Id });
         }).DisableAntiforgery();
 
-        api.MapPost("/projects/from-repo", (RepoRequest req, ProjectPipeline pipeline, AiRegistry ai, RepoIngest ingest) =>
+        // A "root" URL (https://github.com/<owner>, no repo segment) fans out into one project per
+        // repository under that org/user instead of a single project; a specific repo URL behaves as before.
+        api.MapPost("/projects/from-repo", async (RepoRequest req, ProjectPipeline pipeline, AiRegistry ai, RepoIngest ingest, OrgScanner orgScanner, CancellationToken ct) =>
         {
             if (!ai.Available) return Results.Problem(statusCode: 503, title: "AI provider unavailable", detail: ai.Error);
             if (string.IsNullOrWhiteSpace(req.Url)) return Results.BadRequest(new { error = "url is required" });
+
+            if (GitHostDiscovery.TryGetOwner(req.Url, out var owner))
+            {
+                try
+                {
+                    var projects = await orgScanner.StartAsync(owner, ct);
+                    return Results.Accepted($"/api/projects", new { ids = projects.Select(p => p.Id), count = projects.Count, owner });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            }
+
             var name = req.Url.TrimEnd('/').Split('/').Last().Replace(".git", "");
             var p = new Project { Name = name, Source = "repo", SourceRef = req.Url };
             pipeline.Start(p, async (progress, ct) =>

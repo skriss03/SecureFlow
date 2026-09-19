@@ -33,7 +33,7 @@ export interface ArchitectureModel {
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Info'
 export type Confidence = 'Low' | 'Medium' | 'High'
 export type FindingStatus = 'Open' | 'Fixed' | 'Accepted'
-export type FindingCategory = 'Resilience' | 'Security'
+export type FindingCategory = 'Resilience' | 'Security' | 'Vulnerability'
 
 export interface Finding {
   id: string; ruleId: string; category: FindingCategory; tag: string; severity: Severity; confidence: Confidence

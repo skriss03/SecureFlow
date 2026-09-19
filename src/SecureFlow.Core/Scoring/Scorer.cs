@@ -49,7 +49,8 @@ public static class Scorer
         var card = new ScoreCard
         {
             Resilience = Curve(open.Where(f => f.Category == FindingCategory.Resilience)),
-            Security = Curve(open.Where(f => f.Category == FindingCategory.Security)),
+            // Vulnerability (CVE) findings are a security concern, so they weigh on the security score too.
+            Security = Curve(open.Where(f => f.Category is FindingCategory.Security or FindingCategory.Vulnerability)),
         };
 
         foreach (Severity s in Enum.GetValues<Severity>())

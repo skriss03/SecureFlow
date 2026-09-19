@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Bomb, Loader2, RefreshCw, Sparkles, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Bomb, Loader2, RefreshCw, ShieldAlert, Sparkles, Wrench, X } from 'lucide-react'
 import { api, subscribe } from '../api'
 import type { BlastRadiusResult, Component, Finding, Group, LogEntry, Project, ProjectStatus } from '../types'
 import { Button, Card, Pill, SeverityBadge, TypeIcon, impactColor, severityRank } from '../ui'
@@ -61,6 +61,17 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
     try { onProjectChanged(await api.reanalyze(id), 'Re-analysis complete.') } catch (e) { setToast((e as Error).message) } finally { setReanalyzing(false) }
   }
 
+  const [scanningVulns, setScanningVulns] = useState(false)
+  const scanVulnerabilities = async () => {
+    setScanningVulns(true)
+    try {
+      const before = project?.findings.filter(f => f.category === 'Vulnerability' && f.status === 'Open').length ?? 0
+      const p = await api.scanVulnerabilities(id)
+      const after = p.findings.filter(f => f.category === 'Vulnerability' && f.status === 'Open').length
+      onProjectChanged(p, `Vulnerability scan complete: ${after} open (was ${before}).`)
+    } catch (e) { setToast((e as Error).message) } finally { setScanningVulns(false) }
+  }
+
   const simulate = async (componentId: string) => {
     try { setBlast(await api.simulate(id, componentId)); setSelectedFinding(null) } catch (e) { setToast((e as Error).message) }
   }
@@ -117,6 +128,10 @@ export default function ProjectPage({ aiAvailable, groups = [] }: { aiAvailable:
           <ScoreGauge label="Security" value={project.score.security} grade={project.score.securityGrade} delta={delta?.s} size={64} />
           <Button variant="ghost" onClick={reanalyze} disabled={reanalyzing} title="Re-run rules and the AI review">
             {reanalyzing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Re-analyze
+          </Button>
+          <Button variant="ghost" onClick={scanVulnerabilities} disabled={scanningVulns || project.source !== 'repo'}
+            title={project.source === 'repo' ? "Check the repo's dependency manifests against OSV.dev for known CVEs" : 'Only available for repo scans, which have a dependency manifest to check'}>
+            {scanningVulns ? <Loader2 size={14} className="animate-spin" /> : <ShieldAlert size={14} />} Scan vulnerabilities
           </Button>
         </div>
       </div>

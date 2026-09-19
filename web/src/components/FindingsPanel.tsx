@@ -23,16 +23,33 @@ export default function FindingsPanel({ findings, model, selectedId, aiAvailable
 
   const counts = useMemo(() => {
     const open = findings.filter(f => f.status === 'Open')
-    return { open: open.length, fixed: findings.filter(f => f.status === 'Fixed').length, bySev: SEVERITIES.map(s => [s, open.filter(f => f.severity === s).length] as const) }
+    return {
+      open: open.length, fixed: findings.filter(f => f.status === 'Fixed').length,
+      bySev: SEVERITIES.map(s => [s, open.filter(f => f.severity === s).length] as const),
+      resilience: open.filter(f => f.category === 'Resilience').length,
+      security: open.filter(f => f.category === 'Security').length,
+      vulnerability: open.filter(f => f.category === 'Vulnerability').length,
+    }
   }, [findings])
 
   const sel = 'rounded-md border border-line bg-panel-2 px-2 py-1 text-xs outline-none focus:border-accent'
+  const categoryTabs: { value: FindingCategory | 'All'; label: string; count?: number }[] = [
+    { value: 'All', label: 'All' },
+    { value: 'Resilience', label: 'Resilience', count: counts.resilience },
+    { value: 'Security', label: 'Security', count: counts.security },
+    { value: 'Vulnerability', label: 'Vulnerabilities', count: counts.vulnerability },
+  ]
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
-        <select className={sel} value={category} onChange={e => setCategory(e.target.value as FindingCategory | 'All')}>
-          <option value="All">Resilience + Security</option><option value="Resilience">Resilience</option><option value="Security">Security (STRIDE)</option>
-        </select>
+        <div className="flex items-center gap-1 rounded-md border border-line bg-panel-2 p-0.5">
+          {categoryTabs.map(t => (
+            <button key={t.value} onClick={() => setCategory(t.value)}
+              className={`rounded px-2 py-1 text-xs font-medium transition ${category === t.value ? 'bg-accent text-bg' : 'text-muted hover:text-ink'}`}>
+              {t.label}{t.count !== undefined ? ` (${t.count})` : ''}
+            </button>
+          ))}
+        </div>
         <select className={sel} value={minSeverity} onChange={e => setMinSeverity(e.target.value as Severity)}>
           {SEVERITIES.map(s => <option key={s} value={s}>{s === 'Info' ? 'All severities' : `${s} and up`}</option>)}
         </select>
@@ -72,7 +89,9 @@ export default function FindingsPanel({ findings, model, selectedId, aiAvailable
               </div>
               <div className="mt-0.5 line-clamp-2 text-xs text-muted">{f.description}</div>
               <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted">
-                <span className="rounded bg-panel-2 px-1.5 py-0.5">{f.category === 'Security' ? `STRIDE · ${f.tag}` : f.tag}</span>
+                <span className="rounded bg-panel-2 px-1.5 py-0.5">
+                  {f.category === 'Security' ? `STRIDE · ${f.tag}` : f.category === 'Vulnerability' ? `CVE · ${f.tag}` : f.tag}
+                </span>
                 {f.componentIds.slice(0, 3).map(id => <span key={id} className="rounded bg-panel-2 px-1.5 py-0.5">{names.get(id) ?? id}</span>)}
                 {f.componentIds.length > 3 && <span>+{f.componentIds.length - 3}</span>}
                 {f.confidence !== 'High' && <span className="italic">confidence {f.confidence.toLowerCase()}</span>}

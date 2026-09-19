@@ -253,6 +253,39 @@ public static class ProjectEndpoints
             }
         });
 
+        api.MapPost("/projects/{id}/scan-vulnerabilities", async (string id, ProjectStore store, DependencyScanner deps, CancellationToken ct) =>
+        {
+            var p = store.Get(id);
+            if (p is null) return Results.NotFound();
+            if (p.Digest is null) return Results.BadRequest(new { error = "No dependency manifest available. Vulnerability scanning needs a repo scan (image/draw.io/sample projects have no package manifests to check)." });
+
+            var progress = new Progress<string>(msg => p.AddLog(msg));
+            List<Finding> fresh;
+            try { fresh = await deps.ScanAsync(p.Digest, progress, ct); }
+            catch (Exception ex)
+            {
+                p.AddLog("Vulnerability scan failed: " + ex.Message, "error");
+                store.Save(p);
+                return Results.Problem(statusCode: 502, title: "OSV.dev lookup failed", detail: ex.Message);
+            }
+
+            // Preserve Fixed/Accepted status across a re-scan of the same advisory, same as rule findings do.
+            var previous = p.Findings.Where(f => f.Category == FindingCategory.Vulnerability)
+                .GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
+            foreach (var f in fresh)
+                if (previous.TryGetValue(f.Id, out var old) && old.Status != FindingStatus.Open)
+                    f.Status = old.Status;
+
+            p.Findings = p.Findings.Where(f => f.Category != FindingCategory.Vulnerability)
+                .Concat(fresh)
+                .OrderBy(f => f.Status).ThenByDescending(f => f.Severity).ThenByDescending(f => f.Confidence).ToList();
+            p.Score = Core.Scoring.Scorer.Score(p.Findings);
+            p.Snapshot($"Vulnerability scan: {fresh.Count(f => f.Status == FindingStatus.Open)} open");
+            p.AddLog($"Vulnerability scan: {fresh.Count} advisory match(es) against dependency manifests.");
+            store.Save(p);
+            return Results.Ok(p);
+        });
+
         api.MapPost("/projects/{id}/analyze", async (string id, ProjectStore store, ProjectPipeline pipeline, CancellationToken ct) =>
         {
             var p = store.Get(id);

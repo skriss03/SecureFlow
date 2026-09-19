@@ -50,6 +50,7 @@ builder.Services.AddSingleton<ProjectPipeline>();
 builder.Services.AddSingleton<DemoSeeder>();
 builder.Services.AddHttpClient<GitHostDiscovery>();
 builder.Services.AddSingleton<OrgScanner>();
+builder.Services.AddHttpClient<DependencyScanner>();
 builder.Services.AddSingleton(new RepoIngest(Path.Combine(dataDir, "tmp")));
 
 builder.Services.ConfigureHttpJsonOptions(o =>

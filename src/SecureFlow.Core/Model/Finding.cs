@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace SecureFlow.Core.Model;
 
 [JsonConverter(typeof(JsonStringEnumConverter<FindingCategory>))]
-public enum FindingCategory { Resilience, Security }
+public enum FindingCategory { Resilience, Security, Vulnerability }
 
 [JsonConverter(typeof(JsonStringEnumConverter<Severity>))]
 public enum Severity { Info = 0, Low = 1, Medium = 2, High = 3, Critical = 4 }

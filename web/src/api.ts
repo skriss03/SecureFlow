@@ -50,6 +50,7 @@ export const api = {
     return upload<{ id: string }>('/api/projects/from-drawio', form)
   },
   reanalyze: (id: string) => post<Project>(`/api/projects/${id}/analyze`),
+  scanVulnerabilities: (id: string) => post<Project>(`/api/projects/${id}/scan-vulnerabilities`),
   simulate: (id: string, componentId: string) => get<BlastRadiusResult>(`/api/projects/${id}/simulate/${encodeURIComponent(componentId)}`),
   proposeFix: (id: string, findingId: string) => post<FixProposal>(`/api/projects/${id}/findings/${findingId}/fix`),
   applyFix: (id: string, findingId: string) => post<Project>(`/api/projects/${id}/apply-fix`, { findingId }),

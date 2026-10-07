@@ -1,0 +1,5 @@
+# SecureFlow settings for this repo. Command-line flags and SECUREFLOW_* env vars override these;
+# keep the server URL and token out of the repo (env vars or ~/.secureflow/config.yml).
+name: orders-service
+group: Payments Team
+# failOn: high

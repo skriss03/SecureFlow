@@ -1,34 +1,39 @@
-# Continuous feedback: fail a pull request when the committed architecture model has Critical findings.
+# Continuous feedback: scan every pull request with SecureFlow and fail it on Critical findings.
 #
-# Workflow: extract the model once with the SecureFlow UI (repo scan or diagram), download it from the
-# Report tab ("Model JSON"), commit it as `secureflow-model.json`, and keep it updated with the architecture.
-# The deterministic rules run in CI without any AI key, in well under a second.
+# The runner builds the repo digest locally (secrets redacted), uploads it to your SecureFlow server,
+# waits for the analysis and prints the report URL into the job log. The server holds the AI keys;
+# the pipeline only needs a SecureFlow token.
 #
-# Copy this file to .github/workflows/secureflow.yml in the repository you want to gate.
+# Setup (repository settings):
+#   variables:  SECUREFLOW_SERVER        e.g. https://secureflow.apps.example.com
+#               SECUREFLOW_CLI_BASE_URL  folder holding <version>/secureflow-<rid>, e.g. your Artifactory generic repo
+#   secrets:    SECUREFLOW_TOKEN
+#
+# Copy this file to .github/workflows/secureflow.yml in the repository you want to gate. Maven, Gradle,
+# npm and pip projects can call their wrapper instead of the curl step (mvn secureflow:scan, etc.).
 name: secureflow
 on:
   pull_request:
   push:
     branches: [main]
 jobs:
-  resilience-gate:
+  secureflow-gate:
     runs-on: ubuntu-latest
+    env:
+      SECUREFLOW_SERVER: ${{ vars.SECUREFLOW_SERVER }}
+      SECUREFLOW_TOKEN: ${{ secrets.SECUREFLOW_TOKEN }}
+      SECUREFLOW_CLI_VERSION: 0.1.0
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: your-org/SecureFlow   # the SecureFlow tool repository
-          path: secureflow
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - name: Analyze committed model
+      - name: Get the SecureFlow CLI
         run: |
-          dotnet run --project secureflow/src/SecureFlow.Cli -- analyze --model secureflow-model.json --json > secureflow-findings.json
-          dotnet run --project secureflow/src/SecureFlow.Cli -- analyze --model secureflow-model.json --fail-on critical
-      - name: Upload findings
+          curl -fsSL "${{ vars.SECUREFLOW_CLI_BASE_URL }}/${SECUREFLOW_CLI_VERSION}/secureflow-linux-x64" -o secureflow
+          chmod +x secureflow
+      - name: Scan and gate
+        run: ./secureflow scan --fail-on critical --out secureflow-report.md
+      - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: secureflow-findings
-          path: secureflow-findings.json
+          name: secureflow-report
+          path: secureflow-report.md

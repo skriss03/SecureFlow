@@ -1,0 +1,3 @@
+# SecureFlow settings for this repo. Command-line flags and SECUREFLOW_* env vars override these.
+name: notification-service
+group: Platform Team

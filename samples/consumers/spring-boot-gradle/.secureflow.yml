@@ -1,0 +1,2 @@
+# SecureFlow settings for this repo. Command-line flags, -Psecureflow.* and SECUREFLOW_* env vars override these.
+name: inventory-service

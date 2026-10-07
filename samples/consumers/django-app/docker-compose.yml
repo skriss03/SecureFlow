@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    command: gunicorn customer_portal.wsgi:application --bind 0.0.0.0:8000
+    ports: ["8000:8000"]
+    depends_on: [customers-db, redis]
+  worker:
+    build: .
+    command: celery -A customer_portal worker
+    depends_on: [redis]
+  customers-db:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: Portal#2024
+  redis:
+    image: redis:6

@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecureFlow Developer Kick-off Guide</title>
+<style>
+  :root {
+    --bg: #f7f8fb; --surface: #ffffff; --ink: #1b2233; --muted: #5b6477; --line: #e2e6ef;
+    --accent: #3b5bdb; --accent-soft: #e8edff; --ok: #1f8a4c; --ok-soft: #e4f6ec;
+    --warn: #b36b00; --warn-soft: #fff3dd; --bad: #c0392b; --bad-soft: #fdeceb;
+    --code-bg: #0f1626; --code-ink: #e6ebff; --code-muted: #8d99b8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1320; --surface: #151c2e; --ink: #e6ebff; --muted: #9aa5c0; --line: #27314b;
+      --accent: #8fa6ff; --accent-soft: #1d2745; --ok: #55d08a; --ok-soft: #14301f;
+      --warn: #f2b45a; --warn-soft: #36290f; --bad: #ff8a7d; --bad-soft: #3a1a17;
+      --code-bg: #0a0f1c; --code-ink: #e6ebff; --code-muted: #7e8aa9;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  header.hero { background: linear-gradient(135deg, #243b9c, #3b5bdb 55%, #5f7cff); color: #fff; padding: 40px 16px 34px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .hero h1 { margin: 0 0 6px; font-size: 2rem; line-height: 1.2; }
+  .hero p { margin: 4px 0; max-width: 760px; opacity: .95; }
+  .hero .big { margin-top: 18px; display: inline-block; font: 600 1.15rem/1 ui-monospace, Consolas, monospace;
+    background: rgba(0,0,0,.28); padding: 12px 18px; border-radius: 10px; }
+  .layout { display: grid; grid-template-columns: 230px 1fr; gap: 28px; padding: 24px 0 60px; }
+  nav.toc { position: sticky; top: 16px; align-self: start; font-size: .92rem; }
+  nav.toc strong { display: block; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; font-size: .72rem; letter-spacing: .06em; }
+  nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); }
+  nav.toc a:hover { background: var(--accent-soft); }
+  nav.toc .sub { padding-left: 20px; color: var(--muted); font-size: .86rem; }
+  main section { margin-bottom: 38px; }
+  h2 { font-size: 1.45rem; margin: 0 0 12px; padding-top: 6px; }
+  h3 { font-size: 1.1rem; margin: 22px 0 8px; }
+  p { margin: 8px 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 14px 0; }
+  .steps > li { counter-increment: step; position: relative; padding: 0 0 18px 48px; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .steps > li > strong:first-child { display: block; font-size: 1.02rem; margin-bottom: 2px; }
+  pre { position: relative; margin: 10px 0; padding: 14px 16px; border-radius: 10px; background: var(--code-bg); color: var(--code-ink);
+    overflow-x: auto; font: .88rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  pre .c { color: var(--code-muted); }
+  code { font: .88em ui-monospace, Consolas, monospace; background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  button.copy { position: absolute; top: 8px; right: 8px; border: 1px solid #3a4565; background: #1b2540; color: #cfd8ff;
+    border-radius: 6px; font-size: .75rem; padding: 3px 9px; cursor: pointer; }
+  button.copy:hover { background: #26325a; }
+  .note, .tip, .warn { border-radius: 10px; padding: 12px 14px; margin: 12px 0; border-left: 4px solid; font-size: .95rem; }
+  .note { background: var(--accent-soft); border-color: var(--accent); }
+  .tip { background: var(--ok-soft); border-color: var(--ok); }
+  .warn { background: var(--warn-soft); border-color: var(--warn); }
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .flow .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .flow .box b { display: block; color: var(--accent); margin-bottom: 4px; }
+  .flow .box small { color: var(--muted); display: block; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .93rem; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--accent-soft); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+  .chips a { text-decoration: none; background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+    padding: 6px 13px; border-radius: 999px; font-size: .9rem; font-weight: 600; }
+  .chips a:hover { border-color: var(--accent); color: var(--accent); }
+  details.stack { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; }
+  details.stack > summary { cursor: pointer; padding: 14px 18px; font-weight: 700; font-size: 1.05rem; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details.stack > summary::-webkit-details-marker { display: none; }
+  details.stack > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
+  details.stack[open] > summary::before { transform: rotate(90deg); }
+  details.stack > .body { padding: 0 20px 16px; border-top: 1px solid var(--line); }
+  .tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); margin-left: auto; }
+  .tag.part { background: var(--warn-soft); color: var(--warn); }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 4px 14px; margin: 10px 0; font-size: .93rem; }
+  .kv dt { color: var(--muted); font-weight: 600; } .kv dd { margin: 0; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 16px 40px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; } nav.toc { position: static; }
+    .flow { grid-template-columns: 1fr; } .kv { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 1.6rem; }
+  }
+  @media print {
+    nav.toc, button.copy, header.hero .big { display: none; } body { background: #fff; color: #000; }
+    details.stack { break-inside: avoid; } details.stack > .body { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>SecureFlow Developer Kick-off Guide</h1>
+    <p>Scan your own application from your machine and get a resilience, threat-model and vulnerability (CVE) report at a link you can open and share. Same one command for every tech stack.</p>
+    <span class="big">secureflow scan</span>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="Contents">
+    <strong>Contents</strong>
+    <a href="#how">How it works</a>
+    <a href="#before">Before you start</a>
+    <a href="#server">1. Start the server</a>
+    <a href="#install">2. Install the command</a>
+    <a href="#first">3. Run your first scan</a>
+    <a href="#report">4. Read the report</a>
+    <a href="#stacks">Your tech stack</a>
+    <a class="sub" href="#java-maven">Java · Maven</a>
+    <a class="sub" href="#java-gradle">Java · Gradle</a>
+    <a class="sub" href="#dotnet">.NET</a>
+    <a class="sub" href="#python">Python / Django</a>
+    <a class="sub" href="#angular">Angular</a>
+    <a class="sub" href="#react">React</a>
+    <a class="sub" href="#node">Node.js</a>
+    <a class="sub" href="#go">Go</a>
+    <a class="sub" href="#other">Anything else</a>
+    <a href="#options">Useful options</a>
+    <a href="#build">Run from your build</a>
+    <a href="#gate">Fail a build on findings</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#ocp">Moving to the shared server</a>
+    <a href="#cheat">Cheat sheet</a>
+  </nav>
+
+  <main>
+
+    <section id="how">
+      <h2>How it works</h2>
+      <p>You run one command inside your project folder. SecureFlow reads the project on your machine, sends only what it needs to a SecureFlow server, and prints a link to the report. The command shows each step as it goes.</p>
+      <div class="flow">
+        <div class="box"><b>1 · Read locally</b>It picks deployment files, configuration, service-wiring code and dependency versions. Nothing is compiled or run.<small>Secret values are replaced with <code>***REDACTED***</code> before anything leaves your machine.</small></div>
+        <div class="box"><b>2 · Upload</b>The selected files and the dependency list go to the SecureFlow server.<small>Add <code>--dry-run</code> to see exactly what would be sent, without sending it.</small></div>
+        <div class="box"><b>3 · Analyse</b>The server rebuilds your architecture with AI, applies resilience and security rules, and checks every dependency against known CVEs.<small>You get a report link, scores and a pass/fail exit code.</small></div>
+      </div>
+      <div class="note"><strong>Same link every time.</strong> Scanning the same repository and branch again updates the same report, so the link you shared stays valid, and the report keeps the score history.</div>
+    </section>
+
+    <section id="before">
+      <h2>Before you start</h2>
+      <table>
+        <tr><th>You need</th><th>Why</th></tr>
+        <tr><td>The SecureFlow repository on your machine</td><td>It contains the server and the install scripts used below.</td></tr>
+        <tr><td>.NET 10 SDK, Node.js (LTS) and Git</td><td>Only to run the <em>local</em> SecureFlow server. The <code>secureflow</code> command itself needs none of them.</td></tr>
+        <tr><td>An AI key for the server</td><td>The server uses an AI model to rebuild your architecture. See step 1. Without one you still get a CVE-only report.</td></tr>
+        <tr><td>Your project in a Git folder</td><td>The report is named after the repository and branch. Any folder works, but a Git repo gives the best names.</td></tr>
+      </table>
+      <p>The commands below are for Windows PowerShell. On macOS or Linux the same <code>secureflow</code> commands work unchanged; only the install and server-start commands differ, and those are noted where needed.</p>
+    </section>
+
+    <section id="server">
+      <h2>1. Start the SecureFlow server</h2>
+      <p>For the local test, the server runs on your own machine. (Later it moves to the shared OpenShift server and only a URL changes. See <a href="#ocp">Moving to the shared server</a>.)</p>
+
+      <ol class="steps">
+        <li><strong>Save your AI key</strong>
+          Keys are stored as user secrets, outside the repository, so they can never be committed. Pick the line that matches where your key came from.
+          <pre><span class="c"># Key from console.anthropic.com (starts with sk-ant-)</span>
+dotnet user-secrets set "Ai:AnthropicApiKey" "&lt;your-key&gt;" --project src/SecureFlow.Api
+
+<span class="c"># Key from Microsoft Foundry: also save the provider, resource and deployment names</span>
+dotnet user-secrets set "Ai:AnthropicApiKey"        "&lt;your-foundry-key&gt;"       --project src/SecureFlow.Api
+dotnet user-secrets set "Ai:Provider"               "foundry"                   --project src/SecureFlow.Api
+dotnet user-secrets set "Ai:FoundryResourceName"    "&lt;resource-name&gt;"          --project src/SecureFlow.Api
+dotnet user-secrets set "Ai:FoundryDeploymentName"  "&lt;deployment-name&gt;"        --project src/SecureFlow.Api</pre>
+          <div class="tip">In Foundry, open <em>Build → Models → your deployment</em>. The API key is in the right-hand panel. The resource name is the first part of the endpoint <code>https://&lt;resource-name&gt;.services.ai.azure.com</code>, and the deployment name is the name in the list (for example <code>claude-opus-5</code>).</div>
+          <div class="warn">Never paste the key into a chat, an email or a file in the repository. Paste it only into the command above.</div>
+        </li>
+        <li><strong>Start the server</strong>
+          From the SecureFlow repository folder:
+          <pre>.\scripts\run.ps1</pre>
+          Leave this window open while you use SecureFlow. It serves everything at <code>http://localhost:5180</code>.
+        </li>
+        <li><strong>Check that it is healthy</strong>
+          In a second terminal:
+          <pre>curl http://localhost:5180/api/health</pre>
+          Look for <code>"status":"ok"</code> and <code>"available":true</code> under <code>ai</code>. The server also prints a warning at startup if your AI key looks like it is for the wrong provider.
+        </li>
+      </ol>
+      <div class="note">No AI key yet? The scan still works and gives you the dependency CVE report. The report then says <em>"Architecture not analysed"</em> instead of showing resilience and security scores.</div>
+    </section>
+
+    <section id="install">
+      <h2>2. Install the <code>secureflow</code> command (once per machine)</h2>
+      <p>This puts one self-contained program on your PATH. It needs no .NET, Java, Node or Python. After this you use the same command in every project.</p>
+      <ol class="steps">
+        <li><strong>Build the client files</strong> (local test only; in your organisation these will already be in Artifactory)
+          <pre>.\scripts\publish-clients.ps1</pre>
+        </li>
+        <li><strong>Install</strong>
+          <pre>.\scripts\install-cli.ps1</pre>
+          <p>Once the files are in Artifactory, developers will install from there instead:</p>
+          <pre>.\scripts\install-cli.ps1 -BaseUrl https://artifactory.example.com/artifactory/generic-local/secureflow</pre>
+          <p>macOS / Linux:</p>
+          <pre>SECUREFLOW_CLI_BASE_URL=https://artifactory.example.com/artifactory/generic-local/secureflow sh scripts/install-cli.sh</pre>
+        </li>
+        <li><strong>Open a new terminal and check it</strong>
+          <pre>secureflow --version</pre>
+          You should see <code>secureflow 0.1.0</code> and the folder it was installed in (<code>~\.secureflow\bin</code>). A new terminal is needed because an already-open one does not see the updated PATH.
+          <div class="warn">If it shows a different folder, an older <code>secureflow</code> is earlier on your PATH. The installer warns you about this. Remove the older one (for example <code>dotnet tool uninstall -g secureflow.cli</code>).</div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="first">
+      <h2>3. Run your first scan</h2>
+      <p>This is the same for every tech stack. Go to your project folder and run the scan.</p>
+      <ol class="steps">
+        <li><strong>Go to your project</strong>
+          <pre>cd C:\path\to\your\project</pre>
+        </li>
+        <li><strong>Preview what would be sent</strong> (optional, sends nothing)
+          <pre>secureflow scan --dry-run</pre>
+          You see the file list, how many dependencies were found, and how many secret values were redacted.
+        </li>
+        <li><strong>Scan</strong>
+          <pre>secureflow scan --open</pre>
+          The command prints three labelled steps and then the result. <code>--open</code> opens the report in your browser when it is ready. The AI step usually takes one to a few minutes.
+<pre>[1/3] Reading the project on this machine ...
+[2/3] Uploading 39 files and 15 dependency versions to http://localhost:5180 as 'libfintx@main'
+[3/3] Server is analysing: architecture model (AI), resilience + STRIDE rules, CVE check
+
+libfintx  (scan #1, main @ 46316f1)
+  Resilience 45 (D)   Security 23 (F)
+  Open findings: 64  (4 Critical, 25 High, 27 Medium, 8 Low)   of which CVEs: 14
+  Report: http://localhost:5180/p/79d9dfe2ca</pre>
+        </li>
+      </ol>
+    </section>
+
+    <section id="report">
+      <h2>4. Read the report</h2>
+      <p>Open the <code>Report:</code> link. It has these parts:</p>
+      <table>
+        <tr><th>Part</th><th>What it tells you</th></tr>
+        <tr><td>Scores</td><td>Resilience and Security, 0 to 100 with a letter grade. An open Critical finding caps a score at 49, an open High at 74.</td></tr>
+        <tr><td>Findings</td><td>Each one names the affected components, the rule, the evidence (file and line), why it matters, and how to fix it. Filter by severity or type: resilience, security, or vulnerability (CVE).</td></tr>
+        <tr><td>Model</td><td>The architecture SecureFlow rebuilt from your code: services, databases, queues, and the calls between them. Click a component and choose <em>Simulate failure</em> to see what else goes down with it.</td></tr>
+        <tr><td>Fixes</td><td>Ask for an AI-proposed fix on a finding, apply it, and watch the score update.</td></tr>
+        <tr><td>Report tab</td><td>Executive summary and top risks. Print it or save it as PDF to share.</td></tr>
+        <tr><td>CVE findings</td><td>Real published advisories for a dependency version in your project, with the version to upgrade to. They come from the OSV database, not from the AI.</td></tr>
+      </table>
+      <div class="note">The CVE check only uses versions that are written down in your project (manifest or lockfile). Versions that a parent or BOM decides, such as Spring Boot starters with no <code>&lt;version&gt;</code>, cannot be known without resolving it, so SecureFlow skips them rather than guessing.</div>
+    </section>
+
+    <section id="stacks">
+      <h2>Your tech stack</h2>
+      <p>The command is the same everywhere: <code>secureflow scan</code> in the project folder. Open your stack below for what SecureFlow reads and what to expect.</p>
+      <div class="chips">
+        <a href="#java-maven">Java · Maven</a><a href="#java-gradle">Java · Gradle</a><a href="#dotnet">.NET</a><a href="#python">Python / Django</a>
+        <a href="#angular">Angular</a><a href="#react">React</a><a href="#node">Node.js</a><a href="#go">Go</a><a href="#other">Other</a>
+      </div>
+
+      <details class="stack" id="java-maven" open>
+        <summary>Java / Spring Boot with Maven <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>cd your-service</code> then <code>secureflow scan --open</code></dd>
+            <dt>Architecture signals</dt><dd><code>pom.xml</code>, <code>application*.yml</code> / <code>.properties</code>, <code>bootstrap.yml</code>, Dockerfile, Kubernetes / OpenShift / Helm files, CI pipelines. In code: RestTemplate, WebClient, Feign clients, Kafka and Rabbit listeners, JdbcTemplate, Resilience4j, Spring Security.</dd>
+            <dt>CVE check</dt><dd><code>pom.xml</code> dependencies, including <code>${property}</code> versions and the Spring Boot parent.</dd>
+            <dt>Redacted</dt><dd>Passwords, tokens and keys in <code>application.yml</code>, <code>.properties</code>, <code>.env</code> and Kubernetes <code>env</code> values.</dd>
+          </dl>
+          <pre>cd C:\path\to\orders-service
+secureflow scan --open</pre>
+          <p><strong>Optional: run it from Maven.</strong> Add the plugin to <code>&lt;build&gt;&lt;plugins&gt;</code>:</p>
+          <pre>&lt;plugin&gt;
+  &lt;groupId&gt;io.secureflow&lt;/groupId&gt;
+  &lt;artifactId&gt;secureflow-maven-plugin&lt;/artifactId&gt;
+  &lt;version&gt;0.1.0&lt;/version&gt;
+&lt;/plugin&gt;</pre>
+          <pre>mvn secureflow:scan</pre>
+          <div class="tip">A normal <code>mvn package</code> never runs it, so builds are not slowed down. See <a href="#build">Run from your build</a> for gating a build.</div>
+          <p>Try it on the sample: <code>samples\consumers\spring-boot-maven</code> pins log4j 2.14.1, so Log4Shell shows up as a Critical CVE.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="java-gradle">
+        <summary>Java / Spring Boot with Gradle <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the project folder</dd>
+            <dt>Architecture signals</dt><dd>Same Spring files and code patterns as Maven, plus <code>build.gradle(.kts)</code>.</dd>
+            <dt>CVE check</dt><dd><code>build.gradle</code> / <code>build.gradle.kts</code> dependencies, the Spring Boot plugin version, and <code>gradle/libs.versions.toml</code>.</dd>
+          </dl>
+          <pre>cd C:\path\to\inventory-service
+secureflow scan --open</pre>
+          <p><strong>Optional: run it from Gradle.</strong></p>
+          <pre><span class="c">// build.gradle</span>
+plugins { id 'io.secureflow' version '0.1.0' }</pre>
+          <pre>gradle secureflow</pre>
+          <p>Try it on the sample: <code>samples\consumers\spring-boot-gradle</code>.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="dotnet">
+        <summary>.NET (ASP.NET Core, workers, libraries) <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the solution folder</dd>
+            <dt>Architecture signals</dt><dd><code>*.csproj</code>, <code>Program.cs</code>, <code>appsettings*.json</code>, <code>launchSettings.json</code>, Dockerfile, Kubernetes files. In code: HttpClient, EF Core, Service Bus, Redis, Polly, JwtBearer, health checks.</dd>
+            <dt>CVE check</dt><dd><code>*.csproj</code> package references, <code>Directory.Packages.props</code> and <code>packages.lock.json</code>.</dd>
+          </dl>
+          <pre>cd C:\path\to\MySolution
+secureflow scan --open</pre>
+          <div class="tip">For a solution with many projects, scan the solution root to get one model across all services. To get a separate report for one project, use <code>secureflow scan --path src\Orders</code>.</div>
+          <p>Try it on the sample: <code>samples\demo-repo</code>.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="python">
+        <summary>Python: FastAPI, Flask and Django <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the project folder</dd>
+            <dt>Architecture signals</dt><dd><code>requirements*.txt</code>, <code>pyproject.toml</code>, <code>.env</code>, Dockerfile, Kubernetes files, <code>main.py</code> / <code>app.py</code>. Django: <code>settings.py</code>, <code>urls.py</code>, <code>manage.py</code>, <code>wsgi.py</code> / <code>asgi.py</code>, plus <code>DATABASES</code>, <code>CACHES</code>, Celery, <code>DEBUG</code>, <code>ALLOWED_HOSTS</code> and <code>SECRET_KEY</code>. In code: requests, httpx, SQLAlchemy, Celery.</dd>
+            <dt>CVE check</dt><dd><code>requirements.txt</code> (exact <code>==</code> pins), <code>pyproject.toml</code>, <code>poetry.lock</code> and <code>Pipfile.lock</code>.</dd>
+          </dl>
+          <pre>cd C:\path\to\notification-service
+secureflow scan --open</pre>
+          <div class="warn">Pin your dependencies (<code>==</code>) or commit a lockfile. A line such as <code>requests&gt;=2.0</code> has no single version to check, so it is skipped. Projects that are mostly Jupyter notebooks with no manifest give little to analyse.</div>
+          <p>Try it on the samples: <code>samples\consumers\fastapi-app</code> and <code>samples\consumers\django-app</code>.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="angular">
+        <summary>Angular <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the project folder</dd>
+            <dt>Architecture signals</dt><dd><code>package.json</code>, <code>angular.json</code>, <code>src/environments/environment*.ts</code>, <code>proxy.conf.json</code>, <code>nginx.conf</code>, Dockerfile. In code: HttpClient services and interceptors, <code>apiUrl</code>.</dd>
+            <dt>CVE check</dt><dd><code>package.json</code> plus <code>package-lock.json</code>, <code>yarn.lock</code> or <code>pnpm-lock.yaml</code>, including indirect (transitive) packages.</dd>
+          </dl>
+          <pre>cd C:\path\to\storefront-web
+secureflow scan --open</pre>
+          <p><strong>Optional: run it as an npm script.</strong></p>
+          <pre>npm install --save-dev @secureflow/cli</pre>
+          <pre><span class="c">// package.json</span>
+"scripts": { "secureflow": "secureflow scan" }</pre>
+          <pre>npm run secureflow</pre>
+          <div class="tip">Commit your lockfile. It is what lets SecureFlow check the exact version of every package, not just the ones you declared.</div>
+          <p>Try it on the sample: <code>samples\consumers\angular-app</code>.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="react">
+        <summary>React (Vite, Create React App, Next.js) <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the project folder</dd>
+            <dt>Architecture signals</dt><dd><code>package.json</code>, <code>vite.config.*</code>, <code>next.config.*</code>, <code>.env*</code> files (<code>VITE_</code>, <code>REACT_APP_</code>, <code>NEXT_PUBLIC_</code> variables), Dockerfile, <code>nginx.conf</code>. In code: fetch and axios calls.</dd>
+            <dt>CVE check</dt><dd>Same as Angular: <code>package.json</code> and the lockfile.</dd>
+          </dl>
+          <pre>cd C:\path\to\admin-portal
+secureflow scan --open</pre>
+          <div class="warn">Everything in a <code>VITE_</code>, <code>REACT_APP_</code> or <code>NEXT_PUBLIC_</code> variable is compiled into the JavaScript that every visitor downloads. SecureFlow redacts those values before upload, and flags a secret kept in one of them.</div>
+          <p>Try it on the sample: <code>samples\consumers\react-app</code>.</p>
+        </div>
+      </details>
+
+      <details class="stack" id="node">
+        <summary>Node.js (Express, NestJS, TypeScript services) <span class="tag">Full support</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the project folder</dd>
+            <dt>Architecture signals</dt><dd><code>package.json</code>, <code>server.ts</code> / <code>main.ts</code> / <code>app.js</code>, <code>.env</code>, Dockerfile, Kubernetes files. In code: pg, mongoose, ioredis, kafkajs, amqplib, axios.</dd>
+            <dt>CVE check</dt><dd><code>package.json</code> and the lockfile.</dd>
+          </dl>
+          <pre>cd C:\path\to\internet-banking-service
+secureflow scan --open</pre>
+          <div class="tip">A repository with both a back end and a front end (for example a Node API with an Angular <code>client/</code> folder) is scanned in one run, and the report shows one model for both.</div>
+        </div>
+      </details>
+
+      <details class="stack" id="go">
+        <summary>Go <span class="tag part">Partial</span></summary>
+        <div class="body">
+          <dl class="kv">
+            <dt>Run</dt><dd><code>secureflow scan --open</code> in the module folder</dd>
+            <dt>Architecture signals</dt><dd><code>go.mod</code>, <code>main.go</code>, Dockerfile, Kubernetes and Terraform files, CI pipelines. Go source code is read less deeply than the stacks above, so the report leans on deployment files.</dd>
+            <dt>CVE check</dt><dd><code>go.mod</code> requirements.</dd>
+          </dl>
+          <pre>cd C:\path\to\payments-gateway
+secureflow scan --open</pre>
+        </div>
+      </details>
+
+      <details class="stack" id="other">
+        <summary>Any other stack (Ruby, PHP, Rust, ...) <span class="tag part">Architecture only</span></summary>
+        <div class="body">
+          <p>SecureFlow still reads the files that describe how the system is deployed: Dockerfile, docker-compose, Kubernetes / OpenShift / Helm, Terraform, Bicep, CI pipelines, configuration and the README. You get an architecture model, rules and scores. There is no CVE check for stacks without a supported manifest.</p>
+          <pre>cd C:\path\to\your-project
+secureflow scan --open</pre>
+          <p>If your service wiring lives in files SecureFlow does not pick up, add patterns in a <code>.secureflow.yml</code> file at the repo root, with no code change:</p>
+          <pre>ingest:
+  extraPriorityPatterns:
+    - 'config/.*\.rb$'
+  extraWiringSignals:
+    - GrpcChannel
+    - Faraday</pre>
+        </div>
+      </details>
+    </section>
+
+    <section id="options">
+      <h2>Useful options</h2>
+      <p>These work the same on every stack.</p>
+      <table>
+        <tr><th>Option</th><th>What it does</th></tr>
+        <tr><td><code>--dry-run</code></td><td>Show what would be sent. Nothing is uploaded.</td></tr>
+        <tr><td><code>--open</code></td><td>Open the report in your browser when it is ready.</td></tr>
+        <tr><td><code>--fail-on high</code></td><td>Exit with code 2 if an open finding is High or Critical. Values: <code>low</code>, <code>medium</code>, <code>high</code>, <code>critical</code>.</td></tr>
+        <tr><td><code>--group "Payments Team"</code></td><td>Put the project on that team's dashboard.</td></tr>
+        <tr><td><code>--name "Orders Service"</code></td><td>Set the display name. Default is the repository name.</td></tr>
+        <tr><td><code>--path services\orders</code></td><td>Scan a sub-folder, for example one module of a monorepo.</td></tr>
+        <tr><td><code>--out report.md</code></td><td>Also save the report as a Markdown file.</td></tr>
+        <tr><td><code>--no-wait</code></td><td>Upload and print the link without waiting for the analysis.</td></tr>
+        <tr><td><code>--server URL</code> / <code>--token T</code></td><td>Choose the server and give your token. Normally set once in your environment instead (below).</td></tr>
+        <tr><td><code>secureflow config</code></td><td>Show the settings in effect and where each one came from.</td></tr>
+        <tr><td><code>secureflow --help</code></td><td>List every command and option.</td></tr>
+      </table>
+
+      <h3>Where settings come from</h3>
+      <p>Each setting is looked up in this order, and the first one found wins:</p>
+      <ol>
+        <li>The command-line option, for example <code>--fail-on high</code></li>
+        <li>An environment variable, for example <code>SECUREFLOW_FAIL_ON=high</code></li>
+        <li><code>.secureflow.yml</code> in your repository</li>
+        <li><code>~\.secureflow\config.yml</code> in your user folder</li>
+        <li>The built-in default</li>
+      </ol>
+      <p>Example <code>.secureflow.yml</code> in a repository. Keep the server address and token <em>out</em> of the repository:</p>
+      <pre>name: orders-service
+group: Payments Team
+failOn: high</pre>
+      <p>Example <code>~\.secureflow\config.yml</code>, your personal settings:</p>
+      <pre>server: http://localhost:5180
+<span class="c"># token: &lt;your team token&gt;      (needed only when the server requires one)</span></pre>
+    </section>
+
+    <section id="build">
+      <h2>Run it from your build tool (optional)</h2>
+      <p>The command above is all you need. Some teams prefer the scan to be part of the build they already run. Every build-tool option runs the same <code>secureflow scan</code> underneath, so the report is identical.</p>
+      <table>
+        <tr><th>Build tool</th><th>Command</th><th>Set up</th></tr>
+        <tr><td>Maven</td><td><code>mvn secureflow:scan</code></td><td>Add <code>secureflow-maven-plugin</code> to the POM</td></tr>
+        <tr><td>Gradle</td><td><code>gradle secureflow</code></td><td>Add <code>id 'io.secureflow'</code> to <code>plugins</code></td></tr>
+        <tr><td>npm (Angular, React, Node)</td><td><code>npm run secureflow</code></td><td><code>npm i -D @secureflow/cli</code> and a <code>secureflow</code> script</td></tr>
+        <tr><td>pip (Python)</td><td><code>secureflow scan</code></td><td><code>pip install secureflow-cli</code></td></tr>
+        <tr><td>dotnet</td><td><code>secureflow scan</code></td><td><code>dotnet tool install -g SecureFlow.Cli</code></td></tr>
+      </table>
+      <p>In an IDE no plugin is needed. Run <code>secureflow scan --open</code> in the IDE's terminal, or save it as a one-click action: a Shell Script run configuration in IntelliJ, a task in VS Code, or an External Tool in Visual Studio.</p>
+      <pre><span class="c">// VS Code: .vscode/tasks.json</span>
+{ "label": "SecureFlow scan", "type": "shell", "command": "secureflow scan --open" }</pre>
+    </section>
+
+    <section id="gate">
+      <h2>Fail a build on serious findings</h2>
+      <p>Add <code>--fail-on</code> to turn the scan into a quality gate. The command exits with a code your build or pipeline understands:</p>
+      <table>
+        <tr><th>Exit code</th><th>Meaning</th></tr>
+        <tr><td><code>0</code></td><td>Finished, and nothing at or above your threshold is open.</td></tr>
+        <tr><td><code>2</code></td><td>Finished, but open findings reach your threshold. The build should fail.</td></tr>
+        <tr><td><code>1</code></td><td>The scan could not run (server unreachable, bad token, and so on).</td></tr>
+      </table>
+      <pre>secureflow scan --fail-on critical
+echo $LASTEXITCODE        <span class="c"># 2 means the gate failed</span></pre>
+      <p>In a pipeline, run the same command. A ready-made GitHub Actions example is in <code>samples/ci/secureflow-gate.yml</code>. For Maven, bind the plugin to the <code>verify</code> phase in a profile and run <code>mvn verify -Psecureflow</code>.</p>
+      <p>If you decide a finding is acceptable, mark it <strong>Accepted</strong> in the report. It stays accepted on later scans, and no longer counts toward the gate.</p>
+    </section>
+
+    <section id="trouble">
+      <h2>Troubleshooting</h2>
+      <table>
+        <tr><th>You see</th><th>What it means and what to do</th></tr>
+        <tr><td><code>secureflow</code> is not recognised</td><td>Open a <strong>new</strong> terminal after installing. If it still fails, run <code>.\scripts\install-cli.ps1</code> again.</td></tr>
+        <tr><td><code>secureflow --version</code> shows a different folder</td><td>An older copy is earlier on your PATH. Remove it, for example <code>dotnet tool uninstall -g secureflow.cli</code>.</td></tr>
+        <tr><td><code>cannot reach SecureFlow at http://localhost:5180</code></td><td>The server is not running. Start it with <code>.\scripts\run.ps1</code>, or check the address in <code>secureflow config</code>.</td></tr>
+        <tr><td><code>server returned 401 Unauthorized</code></td><td>The server requires a token. Set <code>SECUREFLOW_TOKEN</code> or use <code>--token</code>. Ask the SecureFlow owner for one.</td></tr>
+        <tr><td><code>invalid x-api-key</code> (in the report log)</td><td>The AI key on the server is wrong. A key that does not start with <code>sk-ant-</code> is not an Anthropic key. If it came from Microsoft Foundry, set <code>Ai:Provider=foundry</code> with the resource and deployment names (step 1). Then restart the server.</td></tr>
+        <tr><td><code>AI provider unavailable</code> / <em>"Architecture not analysed"</em></td><td>The server has no working AI key. You still get the CVE report. Add a key (step 1) and scan again for the full report.</td></tr>
+        <tr><td>No CVEs found, but you expected some</td><td>Versions must be written in a manifest or lockfile. Ranges (<code>^1.2</code>, <code>&gt;=2.0</code>) and versions set by a parent or BOM are skipped. Pin the version or commit the lockfile. Also check the dry run says <em>"Resolved N pinned dependencies"</em>.</td></tr>
+        <tr><td>The report misses a service or call</td><td>The file that shows it was not picked up. Run <code>--dry-run</code> to see the list, then add its path or a code pattern in <code>.secureflow.yml</code> (<code>ingest.extraPriorityPatterns</code> or <code>extraWiringSignals</code>).</td></tr>
+        <tr><td>A secret value appears in the report</td><td>Redaction replaces values for keys such as password, secret, token, apikey and connection string. If yours has a different name, add it with <code>redaction.keyPattern</code> in <code>.secureflow.yml</code>, and check with <code>--dry-run</code> before uploading.</td></tr>
+        <tr><td><code>A scan of this project is already running</code></td><td>Another scan of the same repository and branch is still in progress. The command follows it; wait for it to finish.</td></tr>
+      </table>
+      <div class="note">Not sure what is being used? Run <code>secureflow config</code>. It lists every setting, its value (the token is masked), and whether it came from a flag, an environment variable, your repository file, your user file or a default.</div>
+    </section>
+
+    <section id="ocp">
+      <h2>Moving to the shared (OpenShift) server</h2>
+      <p>Nothing in your project changes. You only tell the command where the shared server is and give it your token:</p>
+      <pre><span class="c"># one time, in PowerShell</span>
+[Environment]::SetEnvironmentVariable("SECUREFLOW_SERVER", "https://secureflow.apps.&lt;cluster&gt;", "User")
+[Environment]::SetEnvironmentVariable("SECUREFLOW_TOKEN",  "&lt;your team token&gt;",               "User")</pre>
+      <p>Or put the same two lines in <code>~\.secureflow\config.yml</code>:</p>
+      <pre>server: https://secureflow.apps.&lt;cluster&gt;
+token: &lt;your team token&gt;</pre>
+      <p>Then run <code>secureflow scan</code> exactly as before. The report link now points at the shared server, is kept for the retention period (30 days by default), and appears on your team's dashboard if you set a <code>group</code>.</p>
+      <div class="note">For the SecureFlow owner: the server image, the OpenShift files and the full list of server settings are in <code>docs/developer-integration.md</code> and <code>deploy/openshift/</code>.</div>
+    </section>
+
+    <section id="cheat">
+      <h2>Cheat sheet</h2>
+      <div class="card">
+        <table>
+          <tr><th>Do this</th><th>Command</th></tr>
+          <tr><td>Start the local server</td><td><code>.\scripts\run.ps1</code></td></tr>
+          <tr><td>Check the server and AI status</td><td><code>curl http://localhost:5180/api/health</code></td></tr>
+          <tr><td>Install the command (once)</td><td><code>.\scripts\install-cli.ps1</code></td></tr>
+          <tr><td>Check the install</td><td><code>secureflow --version</code></td></tr>
+          <tr><td>See what would be sent</td><td><code>secureflow scan --dry-run</code></td></tr>
+          <tr><td>Scan and open the report</td><td><code>secureflow scan --open</code></td></tr>
+          <tr><td>Scan and fail the build on High or Critical</td><td><code>secureflow scan --fail-on high</code></td></tr>
+          <tr><td>Put the project on a team dashboard</td><td><code>secureflow scan --group "Payments Team"</code></td></tr>
+          <tr><td>See which settings are in effect</td><td><code>secureflow config</code></td></tr>
+          <tr><td>Maven / Gradle / npm</td><td><code>mvn secureflow:scan</code> · <code>gradle secureflow</code> · <code>npm run secureflow</code></td></tr>
+        </table>
+      </div>
+      <p>Practice projects with deliberate flaws, one per stack, are in <code>samples\consumers\</code> (Spring Maven, Spring Gradle, Angular, React, FastAPI, Django). The .NET sample is <code>samples\demo-repo</code>.</p>
+    </section>
+
+  </main>
+</div>
+
+<footer>SecureFlow developer kick-off guide · version 0.1.0 · full reference: docs/developer-integration.md</footer>
+
+<script>
+  // Add a "Copy" button to every code block. The guide works without it.
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (!navigator.clipboard) return;
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'copy'; btn.textContent = 'Copy';
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/\nCopy$/, '');
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+  // Open the stack that matches the link in the address bar (e.g. #python).
+  function openTarget() {
+    var el = location.hash && document.querySelector(location.hash);
+    if (el && el.tagName === 'DETAILS') el.open = true;
+  }
+  window.addEventListener('hashchange', openTarget);
+  openTarget();
+  // Chips and sidebar links for stacks should also expand the stack.
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var el = document.querySelector(a.getAttribute('href'));
+      if (el && el.tagName === 'DETAILS') el.open = true;
+    });
+  });
+</script>
+</body>
+</html>

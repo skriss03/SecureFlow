@@ -13,7 +13,7 @@ Built for a one-day hackathon. Runs on one machine with one command.
 | Findings | Rule templates | Rules **with evidence** (`path:line`) plus AI context |
 | Failure analysis | None | **Blast-radius simulation**: click a node, see what dies |
 | Fixing | Manual | AI-proposed fix, **applied and re-scored live** |
-| Continuous | No | CLI gate for PRs, model as code |
+| Continuous | No | `secureflow scan` from Maven, Gradle, npm, pip, dotnet or CI; report URL + build gate |
 | AI dependency | n/a | Optional: rules, scores and simulation run without any key |
 
 ## Quick start (Windows)
@@ -37,6 +37,20 @@ Development mode with hot reload: `.\scripts\run.ps1 -Dev` (API on :5180, Vite o
 5. **Simulate**: kill any component; synchronous callers without a circuit breaker go down, async or circuit-broken callers degrade. Deterministic and instant.
 6. **Fix**: AI proposes a model patch plus copy-pasteable code (Polly/Resilience handlers, Kubernetes YAML, Terraform...). Apply it, watch the score move, export the report.
 
+## Scanning your own application
+
+Install the CLI once (`scripts/install-cli.ps1` or `install-cli.sh`), then in **any** project folder, whatever the stack:
+
+```
+secureflow scan
+```
+
+It reads the project locally, redacts secrets, uploads to the SecureFlow server and prints `Report: <server>/p/<id>`: the same report the UI shows, at a URL that stays stable across rescans. `--fail-on high` turns it into a build gate. Moving from a local server to the shared OCP instance means setting `SECUREFLOW_SERVER` and `SECUREFLOW_TOKEN`; nothing in the project changes. Supported stacks: Java/Spring (Maven, Gradle), .NET, Python (FastAPI, Flask, Django), Angular, React, Node and Go, including CVEs from their manifests and lockfiles.
+
+Optional wrappers run the same scan from a build tool: `mvn secureflow:scan`, `gradle secureflow`, `npm run secureflow`.
+
+Guide, settings reference and the OCP checklist: **[docs/developer-integration.md](docs/developer-integration.md)**. Try it end to end with the deliberately flawed apps in `samples/consumers/`.
+
 ## Architecture
 
 ```
@@ -46,20 +60,25 @@ src/
   SecureFlow.Ai      IArchitectureAi: Anthropic (primary) + OpenAI, JSON-schema output, replay cache
   SecureFlow.Ingest  repo digest (git clone --depth 1 + file selection), draw.io parser
   SecureFlow.Api     ASP.NET Core Minimal API, SSE progress, file-backed project store, markdown report
-  SecureFlow.Cli     analyze / simulate / rules / digest / drawio, exit code 2 for CI gates
+  SecureFlow.Cli     scan (upload + report URL) / config / analyze / simulate / rules / digest / drawio, exit code 2 for CI gates
+clients/            thin wrappers that run the CLI: maven-plugin, gradle-plugin, npm, python
+deploy/openshift/   Deployment, Service, Route, PVC, ConfigMap and Secret template (with the root Dockerfile)
+docs/               developer integration guide
 tests/SecureFlow.Core.Tests
-samples/            demo repo with deliberate flaws, draw.io diagram, CI gate workflow
+samples/            demo repo, consumer apps per stack (samples/consumers), draw.io diagram, CI gate workflow
 ```
 
 **Provider-agnostic AI.** `Ai:Provider` in `appsettings.json` (or the `Ai__Provider` env var) switches between `anthropic` (default `claude-opus-5`) and `openai`. Both use strict JSON-schema structured output so the model parses first time.
 
 **Replay cache.** Every AI response is content-addressed and stored under `data/cache`. Identical inputs replay from disk. Rehearse once online, then run `.\scripts\run.ps1 -Offline` to prove the demo does not depend on the network.
 
-**Model as code.** Download the model JSON from the Report tab, commit it, and gate pull requests with `samples/ci/secureflow-gate.yml`.
+**CI gate.** `samples/ci/secureflow-gate.yml` runs `secureflow scan --fail-on critical` on every pull request against your SecureFlow server.
 
 ## CLI
 
 ```
+secureflow scan     [--path .] [--server URL] [--token T] [--fail-on high] [--out report.md] [--dry-run]
+secureflow config   # resolved settings and where each came from
 secureflow analyze  --sample shopfast|healthy | --model model.json  [--json] [--fail-on critical|high|medium]
 secureflow simulate --sample shopfast --kill orders-db
 secureflow rules

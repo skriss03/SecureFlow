@@ -1,0 +1,23 @@
+{
+  "name": "storefront-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SAMPLE with deliberate flaws, for trying SecureFlow on an Angular front end. Do not deploy.",
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "secureflow": "secureflow scan"
+  },
+  "dependencies": {
+    "@angular/common": "11.0.5",
+    "@angular/core": "11.0.5",
+    "@angular/platform-browser": "11.0.5",
+    "lodash": "^4.17.15",
+    "rxjs": "~6.6.3"
+  },
+  "devDependencies": {
+    "@angular/cli": "11.0.5",
+    "@secureflow/cli": "^0.1.0",
+    "typescript": "~4.0.5"
+  }
+}

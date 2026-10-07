@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://orders-db:5432/orders
+    username: orders_app
+    password: OrdersP@ss2024!
+  kafka:
+    bootstrap-servers: kafka:9092
+
+inventory:
+  base-url: http://inventory-service:8080
+
+payment:
+  base-url: https://api.payments.example.com

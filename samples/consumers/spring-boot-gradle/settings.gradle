@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+        // The SecureFlow plugin comes from Artifactory in real projects; mavenLocal() is for the local test
+        // (scripts/publish-clients.ps1 -Wrappers publishes it there).
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = 'inventory-service'

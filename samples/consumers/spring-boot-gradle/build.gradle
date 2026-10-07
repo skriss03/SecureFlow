@@ -1,0 +1,27 @@
+// SAMPLE with deliberate flaws, for trying SecureFlow on a Spring Boot + Gradle service. Do not deploy.
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.5.12' apply false
+    id 'io.secureflow' version '0.1.0'
+}
+
+group = 'com.shopfast'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webflux:2.5.12'
+    implementation 'org.springframework.kafka:spring-kafka:2.7.14'
+    implementation 'org.yaml:snakeyaml:1.29'
+    implementation libs.jackson.databind
+    runtimeOnly 'org.postgresql:postgresql:42.3.1'
+}
+
+// Everything here is optional: unset values come from -Psecureflow.*, SECUREFLOW_* env vars,
+// .secureflow.yml or ~/.secureflow/config.yml. Run with `gradlew secureflow`.
+secureflow {
+    group = 'Platform Team'
+}

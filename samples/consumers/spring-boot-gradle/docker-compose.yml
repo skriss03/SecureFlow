@@ -1,0 +1,13 @@
+services:
+  inventory-service:
+    build: .
+    ports: ["8081:8080"]
+    depends_on: [inventory-db, kafka, redis]
+  inventory-db:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: inventory123
+  redis:
+    image: redis:6
+  kafka:
+    image: bitnami/kafka:3.5

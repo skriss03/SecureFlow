@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecureFlow on OpenShift: Developer Guide</title>
+<style>
+  :root {
+    --bg: #f7f8fb; --surface: #ffffff; --ink: #1b2233; --muted: #5b6477; --line: #e2e6ef;
+    --accent: #3b5bdb; --accent-soft: #e8edff; --ok: #1f8a4c; --ok-soft: #e4f6ec;
+    --warn: #b36b00; --warn-soft: #fff3dd; --bad: #c0392b; --bad-soft: #fdeceb;
+    --code-bg: #0f1626; --code-ink: #e6ebff; --code-muted: #8d99b8; --ph: #ffd479;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1320; --surface: #151c2e; --ink: #e6ebff; --muted: #9aa5c0; --line: #27314b;
+      --accent: #8fa6ff; --accent-soft: #1d2745; --ok: #55d08a; --ok-soft: #14301f;
+      --warn: #f2b45a; --warn-soft: #36290f; --bad: #ff8a7d; --bad-soft: #3a1a17;
+      --code-bg: #0a0f1c; --code-ink: #e6ebff; --code-muted: #7e8aa9; --ph: #ffd479;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  header.hero { background: linear-gradient(135deg, #0b6e4f, #14916b 55%, #2bb58a); color: #fff; padding: 40px 16px 30px; }
+  .hero h1 { margin: 0 0 6px; font-size: 2rem; line-height: 1.2; }
+  .hero p { margin: 4px 0; max-width: 780px; opacity: .96; }
+  .hero .big { margin-top: 16px; display: inline-block; font: 600 1.1rem/1 ui-monospace, Consolas, monospace; background: rgba(0,0,0,.28); padding: 12px 18px; border-radius: 10px; }
+  .setup { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: -18px 0 0; position: relative; box-shadow: 0 6px 20px rgba(0,0,0,.07); }
+  .setup h2 { font-size: 1rem; margin: 0 0 4px; padding: 0; }
+  .setup p { margin: 2px 0 10px; font-size: .9rem; color: var(--muted); }
+  .setup .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .setup label { display: block; font-size: .78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+  .setup input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: .9rem ui-monospace, Consolas, monospace; }
+  .layout { display: grid; grid-template-columns: 230px 1fr; gap: 28px; padding: 26px 0 60px; }
+  nav.toc { position: sticky; top: 16px; align-self: start; font-size: .92rem; }
+  nav.toc strong { display: block; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; font-size: .72rem; letter-spacing: .06em; }
+  nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); }
+  nav.toc a:hover { background: var(--accent-soft); }
+  nav.toc .sub { padding-left: 20px; color: var(--muted); font-size: .86rem; }
+  main section { margin-bottom: 38px; }
+  h2 { font-size: 1.45rem; margin: 0 0 12px; padding-top: 6px; }
+  h3 { font-size: 1.1rem; margin: 22px 0 8px; }
+  p { margin: 8px 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 14px 0; }
+  .steps > li { counter-increment: step; position: relative; padding: 0 0 18px 48px; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .steps > li > strong:first-child { display: block; font-size: 1.02rem; margin-bottom: 2px; }
+  pre { position: relative; margin: 10px 0; padding: 14px 16px; border-radius: 10px; background: var(--code-bg); color: var(--code-ink); overflow-x: auto; font: .88rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  pre .c { color: var(--code-muted); }
+  pre .lbl { display: block; color: var(--code-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  code { font: .88em ui-monospace, Consolas, monospace; background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .ph { background: rgba(255, 212, 121, .18); color: var(--ph); border-radius: 4px; padding: 0 2px; }
+  p .ph, td .ph, li .ph, code .ph { color: var(--warn); background: var(--warn-soft); }
+  button.copy { position: absolute; top: 8px; right: 8px; border: 1px solid #3a4565; background: #1b2540; color: #cfd8ff; border-radius: 6px; font-size: .75rem; padding: 3px 9px; cursor: pointer; }
+  button.copy:hover { background: #26325a; }
+  .note, .tip, .warn { border-radius: 10px; padding: 12px 14px; margin: 12px 0; border-left: 4px solid; font-size: .95rem; }
+  .note { background: var(--accent-soft); border-color: var(--accent); }
+  .tip { background: var(--ok-soft); border-color: var(--ok); }
+  .warn { background: var(--warn-soft); border-color: var(--warn); }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+  .flow .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-size: .93rem; }
+  .flow .box b { display: block; color: var(--accent); margin-bottom: 4px; }
+  .flow .box small { color: var(--muted); display: block; margin-top: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .93rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--accent-soft); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: 0; }
+  details.way { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; }
+  details.way > summary { cursor: pointer; padding: 14px 18px; font-weight: 700; font-size: 1.05rem; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details.way > summary::-webkit-details-marker { display: none; }
+  details.way > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
+  details.way[open] > summary::before { transform: rotate(90deg); }
+  details.way > .body { padding: 0 20px 16px; border-top: 1px solid var(--line); }
+  .tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); margin-left: auto; white-space: nowrap; }
+  .tag.opt { background: var(--accent-soft); color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+  .chips a { text-decoration: none; background: var(--surface); border: 1px solid var(--line); color: var(--ink); padding: 6px 13px; border-radius: 999px; font-size: .9rem; font-weight: 600; }
+  .chips a:hover { border-color: var(--accent); color: var(--accent); }
+  kbd { font: .8em ui-monospace, Consolas, monospace; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 16px 40px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; } nav.toc { position: static; }
+    .flow, .grid2, .setup .row { grid-template-columns: 1fr; } .hero h1 { font-size: 1.6rem; }
+  }
+  @media print { nav.toc, button.copy, .setup, header.hero .big { display: none; } body { background: #fff; color: #000; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>SecureFlow on OpenShift: Developer Guide</h1>
+    <p>SecureFlow is already running for your team. This guide shows how to scan the project you have cloned on your machine, from a terminal, from your IDE, from your build, from a Git hook or from a pipeline, and get a report link you can share.</p>
+    <span class="big">secureflow scan</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="setup" id="setup">
+    <h2>Your team's addresses</h2>
+    <p>Type them once and every command on this page updates. Your platform team can fill these in before sharing the file. Nothing is sent anywhere, and your token is never asked for here.</p>
+    <div class="row">
+      <div><label for="in-server">SecureFlow server address</label><input id="in-server" type="url" value="https://secureflow.apps.example.com" autocomplete="off" spellcheck="false"></div>
+      <div><label for="in-art">Download folder for the command (Artifactory)</label><input id="in-art" type="url" value="https://artifactory.example.com/artifactory/generic-local/secureflow" autocomplete="off" spellcheck="false"></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="Contents">
+    <strong>Contents</strong>
+    <a href="#how">How it fits together</a>
+    <a href="#setup-once">One-time setup</a>
+    <a href="#ways">Ways to run a scan</a>
+    <a class="sub" href="#w-terminal">Terminal</a>
+    <a class="sub" href="#w-ide">Your IDE</a>
+    <a class="sub" href="#w-build">Build tool</a>
+    <a class="sub" href="#w-hook">Git hook</a>
+    <a class="sub" href="#w-ci">CI pipeline</a>
+    <a href="#daily">Daily workflow</a>
+    <a href="#stacks">By tech stack</a>
+    <a href="#share">Sharing and retention</a>
+    <a href="#privacy">What leaves your machine</a>
+    <a href="#settings">Settings</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#admin">For the platform team</a>
+    <a href="#cheat">Cheat sheet</a>
+  </nav>
+
+  <main>
+
+    <section id="how">
+      <h2>How it fits together</h2>
+      <p>Your machine does the reading, the shared server does the analysing. You never run the SecureFlow server yourself, and you don't need an AI key.</p>
+      <div class="flow">
+        <div class="box"><b>Your machine</b>You run <code>secureflow scan</code> in your cloned project.<small>The command reads files locally and redacts secrets.</small></div>
+        <div class="box"><b>Upload over HTTPS</b>Selected files and the dependency list go to the server with your team token.<small>Source code is not compiled or run.</small></div>
+        <div class="box"><b>SecureFlow on OpenShift</b>AI rebuilds your architecture, rules score it, every dependency is checked for known CVEs.<small>The AI keys live only on the server.</small></div>
+        <div class="box"><b>Report link</b>You get a link and a pass/fail exit code.<small>Same link on every rescan; kept for the retention period.</small></div>
+      </div>
+    </section>
+
+    <section id="setup-once">
+      <h2>One-time setup (about 5 minutes)</h2>
+      <p>You need two things from your platform team: the <strong>team token</strong>, and the server address and download folder shown at the top of this page.</p>
+      <ol class="steps">
+        <li><strong>Install the <code>secureflow</code> command</strong>
+          It is a single self-contained program. It needs no .NET, Java, Node or Python, and no admin rights.
+          <pre><span class="lbl">Windows (PowerShell)</span>irm <span class="ph" data-ph="art">https://artifactory.example.com/artifactory/generic-local/secureflow</span>/install-cli.ps1 -OutFile install-cli.ps1
+.\install-cli.ps1 -BaseUrl <span class="ph" data-ph="art">https://artifactory.example.com/artifactory/generic-local/secureflow</span> -Server <span class="ph" data-ph="server">https://secureflow.apps.example.com</span></pre>
+          <pre><span class="lbl">macOS / Linux</span>curl -fsSL <span class="ph" data-ph="art">https://artifactory.example.com/artifactory/generic-local/secureflow</span>/install-cli.sh -o install-cli.sh
+SECUREFLOW_CLI_BASE_URL=<span class="ph" data-ph="art">https://artifactory.example.com/artifactory/generic-local/secureflow</span> SECUREFLOW_SERVER=<span class="ph" data-ph="server">https://secureflow.apps.example.com</span> sh install-cli.sh</pre>
+          The installer puts <code>secureflow</code> in <code>~/.secureflow/bin</code>, adds it to your PATH, and saves the server address in <code>~/.secureflow/config.yml</code>. If your team publishes the installer somewhere else, use that location instead.
+        </li>
+        <li><strong>Save your team token</strong>
+          Store it as an environment variable, so it never appears in a project folder or in Git.
+          <pre><span class="lbl">Windows (PowerShell), once</span>[Environment]::SetEnvironmentVariable("SECUREFLOW_TOKEN", "&lt;your team token&gt;", "User")</pre>
+          <pre><span class="lbl">macOS / Linux, add to ~/.bashrc or ~/.zshrc</span>export SECUREFLOW_TOKEN="&lt;your team token&gt;"</pre>
+          <div class="warn">Treat the token like a password. Don't put it in a repository, a ticket or a chat. If it leaks, ask the platform team to replace it.</div>
+        </li>
+        <li><strong>Open a new terminal and check everything</strong>
+          A new terminal is needed so it picks up the new PATH and token.
+          <pre>secureflow --version
+secureflow config
+curl <span class="ph" data-ph="server">https://secureflow.apps.example.com</span>/api/health</pre>
+          <ul>
+            <li><code>secureflow --version</code> shows <code>0.1.0</code> and the folder <code>~/.secureflow/bin</code>. If it shows another folder, an older copy is earlier on your PATH; remove it.</li>
+            <li><code>secureflow config</code> lists every setting. <code>server</code> should be your team's address and <code>token</code> should show masked characters.</li>
+            <li>The health page should say <code>"status":"ok"</code> and <code>"available":true</code> under <code>ai</code>. If you can't reach it, check that you are on the company network or VPN.</li>
+          </ul>
+        </li>
+      </ol>
+      <div class="tip">That's the whole setup. From now on, every project on your machine is one command away.</div>
+    </section>
+
+    <section id="ways">
+      <h2>Ways to run a scan</h2>
+      <p>All of these run the same <code>secureflow scan</code>, so the report is identical. Pick whichever fits how you already work. You can use more than one.</p>
+      <div class="chips">
+        <a href="#w-terminal">Terminal</a><a href="#w-ide">IntelliJ · VS Code · Visual Studio · Eclipse</a><a href="#w-build">Maven · Gradle · npm</a><a href="#w-hook">Git hook</a><a href="#w-ci">CI pipeline</a>
+      </div>
+
+      <details class="way" id="w-terminal" open>
+        <summary>From any terminal <span class="tag">Start here</span></summary>
+        <div class="body">
+          <p>Works the same in PowerShell, Command Prompt, Windows Terminal, bash, zsh and the macOS Terminal, for every tech stack.</p>
+          <ol class="steps">
+            <li><strong>Go to the project you cloned</strong>
+              <pre>cd C:\code\orders-service</pre></li>
+            <li><strong>Preview what would be sent</strong> (optional, sends nothing)
+              <pre>secureflow scan --dry-run</pre>
+              You see the list of files, the dependencies found, and how many secret values were redacted.</li>
+            <li><strong>Scan</strong>
+              <pre>secureflow scan --open</pre>
+              The command prints three labelled steps, then the scores and the link. <code>--open</code> opens the report in your browser. It usually takes one to a few minutes.
+<pre>[1/3] Reading the project on this machine ...
+[2/3] Uploading 39 files and 15 dependency versions to <span class="ph" data-ph="server">https://secureflow.apps.example.com</span> as 'orders-service@main'
+[3/3] Server is analysing: architecture model (AI), resilience + STRIDE rules, CVE check
+
+orders-service  (scan #1, main @ 46316f1)
+  Resilience 45 (D)   Security 23 (F)
+  Open findings: 64  (4 Critical, 25 High, 27 Medium, 8 Low)   of which CVEs: 14
+  Report: <span class="ph" data-ph="server">https://secureflow.apps.example.com</span>/p/79d9dfe2ca</pre></li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="way" id="w-ide">
+        <summary>From your IDE <span class="tag">No plugin needed</span></summary>
+        <div class="body">
+          <p>Every IDE has a built-in terminal that opens in your project folder, so the command is the same as above. Optionally, save it as a one-click action.</p>
+
+          <h3>IntelliJ IDEA, PyCharm, WebStorm, Rider</h3>
+          <ul>
+            <li><strong>Terminal:</strong> press <kbd>Alt</kbd>+<kbd>F12</kbd> (or View → Tool Windows → Terminal) and run <code>secureflow scan --open</code>.</li>
+            <li><strong>One-click:</strong> Run → Edit Configurations → <em>+</em> → <em>Shell Script</em>. Set <em>Execute</em> to <em>Script text</em> with <code>secureflow scan --open</code>, and the working directory to the project folder. Name it "SecureFlow scan". Run it with the green button.</li>
+            <li><strong>Maven or Gradle projects:</strong> add a Maven run configuration with the command line <code>secureflow:scan</code>, or run the <code>secureflow</code> Gradle task from the Gradle tool window. See "Build tool" below.</li>
+            <li><strong>npm projects (WebStorm):</strong> after adding the script (below), run <code>secureflow</code> from the npm tool window.</li>
+          </ul>
+
+          <h3>Visual Studio Code</h3>
+          <ul>
+            <li><strong>Terminal:</strong> press <kbd>Ctrl</kbd>+<kbd>`</kbd> and run <code>secureflow scan --open</code>.</li>
+            <li><strong>One-click:</strong> create <code>.vscode/tasks.json</code> in the project, then use Terminal → Run Task → "SecureFlow scan".
+<pre>{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SecureFlow scan",
+      "type": "shell",
+      "command": "secureflow scan --open",
+      "problemMatcher": []
+    }
+  ]
+}</pre></li>
+          </ul>
+
+          <h3>Visual Studio (.NET)</h3>
+          <ul>
+            <li><strong>Terminal:</strong> View → Terminal (<kbd>Ctrl</kbd>+<kbd>`</kbd>) opens a Developer PowerShell in the solution folder. Run <code>secureflow scan --open</code>.</li>
+            <li><strong>One-click:</strong> Tools → External Tools → Add. Title: <em>SecureFlow scan</em>. Command: <code>secureflow</code>. Arguments: <code>scan --open</code>. Initial directory: <code>$(SolutionDir)</code>. Tick <em>Use Output window</em>. It then appears in the Tools menu.</li>
+          </ul>
+
+          <h3>Eclipse / Spring Tools</h3>
+          <ul>
+            <li><strong>Maven projects:</strong> right-click the project → Run As → Maven build… → Goals: <code>secureflow:scan</code>. Eclipse remembers it as a launch configuration.</li>
+            <li><strong>Any project:</strong> Run → External Tools → External Tools Configurations → Program. Location: <code>${env_var:USERPROFILE}\.secureflow\bin\secureflow.exe</code> (or the full path to <code>secureflow</code> on macOS / Linux). Working directory: <code>${project_loc}</code>. Arguments: <code>scan --open</code>.</li>
+          </ul>
+
+          <div class="note">If the IDE's terminal says <code>secureflow</code> is not recognised, restart the IDE. IDEs read the PATH when they start, so one that was open during install does not see it.</div>
+        </div>
+      </details>
+
+      <details class="way" id="w-build">
+        <summary>From your build tool <span class="tag opt">Optional</span></summary>
+        <div class="body">
+          <p>Use these if you want the scan to be part of the build you already run, for example as a gate on <code>mvn verify</code>. They need no extra setup on your machine beyond the token, and each one runs the same <code>secureflow scan</code> underneath. Your team publishes the plugins to Artifactory.</p>
+          <table>
+            <tr><th>Build tool</th><th>Command</th><th>One-time project change</th></tr>
+            <tr><td>Maven</td><td><code>mvn secureflow:scan</code></td><td>Add <code>io.secureflow:secureflow-maven-plugin</code> to <code>&lt;build&gt;&lt;plugins&gt;</code></td></tr>
+            <tr><td>Gradle</td><td><code>gradle secureflow</code></td><td>Add <code>id 'io.secureflow' version '0.1.0'</code> to <code>plugins</code></td></tr>
+            <tr><td>npm (Angular, React, Node)</td><td><code>npm run secureflow</code></td><td><code>npm i -D @secureflow/cli</code> and a <code>"secureflow": "secureflow scan"</code> script</td></tr>
+            <tr><td>pip (Python)</td><td><code>secureflow scan</code></td><td><code>pip install secureflow-cli</code> in your environment</td></tr>
+            <tr><td>dotnet</td><td><code>secureflow scan</code></td><td><code>dotnet tool install -g SecureFlow.Cli</code></td></tr>
+          </table>
+          <pre><span class="lbl">pom.xml</span>&lt;plugin&gt;
+  &lt;groupId&gt;io.secureflow&lt;/groupId&gt;
+  &lt;artifactId&gt;secureflow-maven-plugin&lt;/artifactId&gt;
+  &lt;version&gt;0.1.0&lt;/version&gt;
+&lt;/plugin&gt;</pre>
+          <pre><span class="lbl">build.gradle</span>plugins { id 'io.secureflow' version '0.1.0' }</pre>
+          <pre><span class="lbl">package.json</span>"scripts": { "secureflow": "secureflow scan" }</pre>
+          <div class="tip">A normal <code>mvn package</code>, <code>gradle build</code> or <code>npm run build</code> never runs the scan, so builds are not slowed down. To make it part of a build, bind it to <code>verify</code> in a Maven profile and run <code>mvn verify -Psecureflow</code>, or add <code>check.dependsOn tasks.secureflow</code> in Gradle.</div>
+        </div>
+      </details>
+
+      <details class="way" id="w-hook">
+        <summary>Before you push: a Git hook <span class="tag opt">Optional</span></summary>
+        <div class="body">
+          <p>Catch Critical findings before they reach the remote. A <code>pre-push</code> hook runs the scan and stops the push if the gate fails. It works on your clone only and does not change the repository.</p>
+          <pre><span class="lbl">.git/hooks/pre-push  (macOS / Linux / Git Bash on Windows; save without an extension)</span>#!/bin/sh
+secureflow scan --fail-on critical || {
+  echo "SecureFlow gate failed. Fix the findings, or push with: git push --no-verify"
+  exit 1
+}</pre>
+          <pre><span class="c"># macOS / Linux: make it executable</span>
+chmod +x .git/hooks/pre-push</pre>
+          <div class="warn">A scan takes a minute or more, so a pre-push hook is best for teams that accept that wait. Use <code>--no-wait</code> if you only want the upload without blocking the push.</div>
+        </div>
+      </details>
+
+      <details class="way" id="w-ci">
+        <summary>In your CI pipeline <span class="tag opt">Team gate</span></summary>
+        <div class="body">
+          <p>The pipeline runs the same command on every pull request, so the gate applies to everyone. Keep the token as a pipeline secret and the server address as a pipeline variable. The exit code decides pass or fail: <code>0</code> pass, <code>2</code> findings reached your threshold, <code>1</code> the scan could not run.</p>
+          <pre><span class="lbl">GitHub Actions</span>env:
+  SECUREFLOW_SERVER: ${{ vars.SECUREFLOW_SERVER }}
+  SECUREFLOW_TOKEN:  ${{ secrets.SECUREFLOW_TOKEN }}
+steps:
+  - uses: actions/checkout@v4
+  - run: |
+      curl -fsSL "<span class="ph" data-ph="art">https://artifactory.example.com/artifactory/generic-local/secureflow</span>/0.1.0/secureflow-linux-x64" -o secureflow
+      chmod +x secureflow
+      ./secureflow scan --fail-on critical --out secureflow-report.md</pre>
+          <pre><span class="lbl">Jenkins (declarative)</span>environment {
+  SECUREFLOW_SERVER = '<span class="ph" data-ph="server">https://secureflow.apps.example.com</span>'
+  SECUREFLOW_TOKEN  = credentials('secureflow-token')
+}
+stages {
+  stage('SecureFlow') {
+    steps { sh 'secureflow scan --fail-on critical' }
+  }
+}</pre>
+          <p>The same pattern works in Azure DevOps and GitLab CI: set the two variables, download or preinstall the command, and run <code>secureflow scan --fail-on critical</code>. A ready GitHub Actions file is in <code>samples/ci/secureflow-gate.yml</code>.</p>
+          <div class="note">In CI the project key defaults to <code>repository@branch</code>, so each branch gets its own report and a pull request does not overwrite the report for <code>main</code>.</div>
+        </div>
+      </details>
+    </section>
+
+    <section id="daily">
+      <h2>Daily workflow</h2>
+      <ol class="steps">
+        <li><strong>Scan before you open a pull request</strong>
+          <pre>secureflow scan --open</pre></li>
+        <li><strong>Read the report, highest severity first</strong>
+          Each finding shows the evidence (file and line), why it matters and how to fix it. For a fix proposal, open the finding and choose <em>Propose fix</em>. CVE findings state the version to upgrade to.</li>
+        <li><strong>Fix, then scan again</strong>
+          <pre>secureflow scan</pre>
+          The report keeps the same link and adds a point to the score history. Findings you fixed are marked <em>Fixed</em> or drop off the list, and the scores update.</li>
+        <li><strong>Mark what you accept</strong>
+          If a finding is a conscious trade-off, mark it <em>Accepted</em> in the report. It stays accepted on later scans and no longer counts toward the gate.</li>
+        <li><strong>Paste the link in your pull request</strong>
+          Reviewers open the same report you did, with no tool to install.</li>
+      </ol>
+    </section>
+
+    <section id="stacks">
+      <h2>What each tech stack contributes</h2>
+      <p>The command is identical for every stack. This is only what SecureFlow reads.</p>
+      <table>
+        <tr><th>Stack</th><th>Architecture files and code patterns</th><th>CVE check from</th></tr>
+        <tr><td>Java / Spring (Maven, Gradle)</td><td><code>pom.xml</code>, <code>build.gradle(.kts)</code>, <code>application*.yml/properties</code>, <code>bootstrap.yml</code>; RestTemplate, WebClient, Feign, Kafka and Rabbit listeners, Resilience4j, Spring Security</td><td><code>pom.xml</code> (including <code>${property}</code> versions and the parent), <code>build.gradle(.kts)</code>, <code>libs.versions.toml</code></td></tr>
+        <tr><td>.NET</td><td><code>*.csproj</code>, <code>Program.cs</code>, <code>appsettings*.json</code>; HttpClient, EF Core, Service Bus, Polly, JwtBearer</td><td><code>*.csproj</code>, <code>Directory.Packages.props</code>, <code>packages.lock.json</code></td></tr>
+        <tr><td>Python (FastAPI, Flask, Django)</td><td><code>requirements*.txt</code>, <code>pyproject.toml</code>, <code>settings.py</code>, <code>urls.py</code>, <code>.env</code>; requests, httpx, SQLAlchemy, Celery</td><td><code>requirements.txt</code> (exact pins), <code>pyproject.toml</code>, <code>poetry.lock</code>, <code>Pipfile.lock</code></td></tr>
+        <tr><td>Angular, React, Node.js</td><td><code>package.json</code>, <code>angular.json</code>, <code>environment*.ts</code>, <code>vite/next.config.*</code>, <code>.env*</code>; HttpClient, fetch, axios, database and queue clients</td><td><code>package.json</code> plus <code>package-lock.json</code>, <code>yarn.lock</code> or <code>pnpm-lock.yaml</code> (including indirect packages)</td></tr>
+        <tr><td>Go</td><td><code>go.mod</code>, <code>main.go</code>, deployment files (code is read less deeply)</td><td><code>go.mod</code></td></tr>
+        <tr><td>Anything else</td><td>Dockerfile, compose, Kubernetes / OpenShift / Helm, Terraform, CI pipelines, README</td><td>(no CVE check)</td></tr>
+      </table>
+      <div class="tip">For the best CVE results, commit your lockfile and pin exact versions. Version ranges (<code>^1.2</code>, <code>&gt;=2.0</code>) and versions decided by a parent or BOM can't be checked, so SecureFlow skips them rather than guess.</div>
+      <p>A <strong>monorepo</strong> is scanned in one run from its root, and the report shows one model across the services. To get a separate report for one module, use <code>secureflow scan --path services/orders</code>.</p>
+    </section>
+
+    <section id="share">
+      <h2>Sharing and retention</h2>
+      <table>
+        <tr><th>Question</th><th>Answer</th></tr>
+        <tr><td>Who can open my report link?</td><td>Anyone who can reach the server, typically colleagues on the company network. Opening a report does not need a token; running a scan does. (Your platform team can require a token for reading too.)</td></tr>
+        <tr><td>How long is it kept?</td><td>For the retention period after its last update, 30 days by default. Scanning again resets that clock. Download the report as Markdown with <code>--out report.md</code>, or print it to PDF from the Report tab, if you need a permanent copy.</td></tr>
+        <tr><td>Will a rescan change the link?</td><td>No. The project is identified by repository and branch (<code>orders-service@main</code>), so rescans update the same report and keep its history.</td></tr>
+        <tr><td>How do I show up on my team's dashboard?</td><td>Add <code>--group "Payments Team"</code>, or put <code>group: Payments Team</code> in a <code>.secureflow.yml</code> file at the repository root. The group is created if it doesn't exist.</td></tr>
+        <tr><td>Can two people scan the same branch?</td><td>Yes. They update the same report. If a scan is already running, the second command follows it instead of starting another.</td></tr>
+      </table>
+    </section>
+
+    <section id="privacy">
+      <h2>What leaves your machine</h2>
+      <ul>
+        <li><strong>Only selected files:</strong> deployment files, configuration, a limited number of source files that show how services connect, and the README. Not your whole repository.</li>
+        <li><strong>No secrets:</strong> values for keys such as <code>password</code>, <code>secret</code>, <code>token</code>, <code>apikey</code> and connection strings are replaced with <code>***REDACTED***</code> on your machine, before upload. Private keys, JWTs and passwords inside URLs are also removed. Line numbers are kept, so findings still point to the right line.</li>
+        <li><strong>The dependency list:</strong> names and versions only, taken from your manifests and lockfiles.</li>
+        <li><strong>Over HTTPS</strong> to the team server, with your token. Nothing is sent to a third party except by the server: the AI service your organisation configured, and the public vulnerability database (OSV) for CVE lookups.</li>
+        <li><strong>You are in control:</strong> run <code>secureflow scan --dry-run</code> to see the exact list first.</li>
+      </ul>
+      <div class="warn">Redaction recognises common key names. If your project names a secret differently (for example <code>gateway.credentials</code> is covered, but <code>magic_phrase</code> is not), check the dry run, and add the name with <code>redaction.keyPattern</code> in <code>.secureflow.yml</code>.</div>
+    </section>
+
+    <section id="settings">
+      <h2>Settings</h2>
+      <p>Each setting is looked up in this order, and the first one found wins:</p>
+      <ol>
+        <li>The command-line option, for example <code>--fail-on high</code></li>
+        <li>An environment variable, for example <code>SECUREFLOW_FAIL_ON=high</code></li>
+        <li><code>.secureflow.yml</code> in the repository</li>
+        <li><code>~/.secureflow/config.yml</code> in your user folder</li>
+        <li>The built-in default</li>
+      </ol>
+      <div class="grid2">
+        <div>
+          <p><strong>Personal settings</strong>, <code>~/.secureflow/config.yml</code>. Set by the installer; add the token here only if you can't use an environment variable.</p>
+          <pre>server: <span class="ph" data-ph="server">https://secureflow.apps.example.com</span>
+<span class="c"># token: &lt;your team token&gt;</span></pre>
+        </div>
+        <div>
+          <p><strong>Project settings</strong>, <code>.secureflow.yml</code> committed in the repository. Never put the server address or token here.</p>
+          <pre>name: orders-service
+group: Payments Team
+failOn: high</pre>
+        </div>
+      </div>
+      <table>
+        <tr><th>Option</th><th>Environment variable</th><th>Default</th></tr>
+        <tr><td><code>--server</code></td><td><code>SECUREFLOW_SERVER</code></td><td><code>http://localhost:5180</code> (the installer overrides it)</td></tr>
+        <tr><td><code>--token</code></td><td><code>SECUREFLOW_TOKEN</code></td><td>none</td></tr>
+        <tr><td><code>--group</code></td><td><code>SECUREFLOW_GROUP</code></td><td>none</td></tr>
+        <tr><td><code>--name</code></td><td><code>SECUREFLOW_NAME</code></td><td>repository name</td></tr>
+        <tr><td><code>--project-key</code></td><td><code>SECUREFLOW_PROJECT_KEY</code></td><td><code>repository@branch</code></td></tr>
+        <tr><td><code>--fail-on</code></td><td><code>SECUREFLOW_FAIL_ON</code></td><td><code>none</code></td></tr>
+        <tr><td><code>--timeout-seconds</code></td><td><code>SECUREFLOW_TIMEOUT_SECONDS</code></td><td><code>900</code></td></tr>
+        <tr><td><code>--out</code>, <code>--open</code>, <code>--no-wait</code></td><td><code>SECUREFLOW_OUT</code>, <code>_OPEN</code>, <code>_WAIT</code></td><td>off</td></tr>
+      </table>
+      <p>Run <code>secureflow config</code> any time to see every value in effect, and whether it came from a flag, an environment variable, your repository, your user file or a default.</p>
+    </section>
+
+    <section id="trouble">
+      <h2>Troubleshooting</h2>
+      <table>
+        <tr><th>You see</th><th>What it means and what to do</th></tr>
+        <tr><td><code>cannot reach SecureFlow at https://...</code></td><td>Check you are on the company network or VPN, then open <span class="ph" data-ph="server">https://secureflow.apps.example.com</span>/api/health in a browser. Confirm the address with <code>secureflow config</code>. If your company uses a web proxy, set <code>HTTPS_PROXY</code> (macOS / Linux) or configure the Windows proxy, as for any other tool.</td></tr>
+        <tr><td><code>server returned 401 Unauthorized</code></td><td>The token is missing or wrong. Check that <code>secureflow config</code> shows a masked token, that you opened a <strong>new</strong> terminal after saving it, and ask the platform team to confirm the token is current.</td></tr>
+        <tr><td>Certificate or TLS error</td><td>Your machine does not trust the company's certificate authority. Ask IT to install the root certificate in your system trust store. As a last resort for a test server only, <code>--insecure-skip-tls-verify</code> turns the check off. Never use it against a production server.</td></tr>
+        <tr><td><code>scan failed on the server</code> with an AI error, or <code>server returned 503</code></td><td>The AI service behind SecureFlow is down, rate-limited, or its key has a problem. This is not something you can fix on your machine; send the platform team the report link and try again in a few minutes. If the server is set to accept scans without AI, you instead get a CVE-only report that says <em>"Architecture not analysed"</em>.</td></tr>
+        <tr><td><code>server returned 413</code> (digest too large)</td><td>The upload is above the server's size limit. Exclude generated or vendored folders with <code>ingest.extraSkipDirs</code> in <code>.secureflow.yml</code>, or ask the platform team to raise the limit.</td></tr>
+        <tr><td><code>A scan of this project is already running</code></td><td>Someone (maybe you, or the pipeline) is scanning the same repository and branch. The command follows that scan; wait for it to finish.</td></tr>
+        <tr><td>The scan times out</td><td>Large repositories and a busy AI service can take longer than 15 minutes. The scan keeps running on the server. Open the link it printed, or raise <code>--timeout-seconds</code>.</td></tr>
+        <tr><td>No CVEs, but you expected some</td><td>Versions must be written in a manifest or lockfile. Commit the lockfile or pin the version, then check the dry run shows <em>"Resolved N pinned dependencies"</em>.</td></tr>
+        <tr><td>The report misses a service or call</td><td>The file that shows it wasn't picked up. Run <code>--dry-run</code>, then add its path or a code pattern in <code>.secureflow.yml</code> (<code>ingest.extraPriorityPatterns</code>, <code>ingest.extraWiringSignals</code>).</td></tr>
+        <tr><td><code>secureflow</code> not recognised</td><td>Open a new terminal (and restart your IDE). If it still fails, run the installer again.</td></tr>
+        <tr><td><code>secureflow --version</code> shows another folder</td><td>An older copy is earlier on your PATH. Remove it, for example <code>dotnet tool uninstall -g secureflow.cli</code>.</td></tr>
+      </table>
+    </section>
+
+    <section id="admin">
+      <h2>For the platform team: rollout checklist</h2>
+      <p>Hand developers this page after the following is in place. Details are in <code>docs/developer-integration.md</code> and <code>deploy/openshift/</code>.</p>
+      <ol>
+        <li><strong>Server is live:</strong> the SecureFlow pod is running on OpenShift behind a TLS Route, and <code>/api/health</code> shows <code>"status":"ok"</code> and <code>"available":true</code> for the AI provider.</li>
+        <li><strong>Report links are correct:</strong> <code>SecureFlow__PublicBaseUrl</code> is set to the Route address, so links in scan output open from any laptop.</li>
+        <li><strong>Tokens are issued:</strong> <code>SecureFlow__Auth__Enabled=true</code> and one token per team in <code>SecureFlow__Auth__Tokens__N</code>, from an OpenShift Secret, never the ConfigMap. Replace a token by editing the Secret and restarting the pod.</li>
+        <li><strong>Retention is set:</strong> <code>SecureFlow__Retention__Days</code> (30 by default) and a persistent volume mounted at <code>/data</code>, so reports survive restarts.</li>
+        <li><strong>Client files are published:</strong> the <code>secureflow-&lt;os&gt;-&lt;arch&gt;</code> programs under <code>&lt;version&gt;/</code>, plus <code>install-cli.ps1</code> and <code>install-cli.sh</code>, in an Artifactory generic repository. Publish the Maven and Gradle plugins, the npm package and the Python package to their repositories if teams want build-tool integration.</li>
+        <li><strong>This page is personalised:</strong> type the server and Artifactory addresses in the box at the top, then share the file. It remembers them in your browser.</li>
+        <li><strong>Reachability:</strong> developers' laptops and the CI runners can reach the Route; the cluster can reach the AI service and <code>api.osv.dev</code> (or an internal mirror set with <code>DependencyScan__OsvBaseUrl</code>).</li>
+      </ol>
+    </section>
+
+    <section id="cheat">
+      <h2>Cheat sheet</h2>
+      <div class="card">
+        <table>
+          <tr><th>Do this</th><th>Command</th></tr>
+          <tr><td>Check the install</td><td><code>secureflow --version</code></td></tr>
+          <tr><td>See which settings are in effect</td><td><code>secureflow config</code></td></tr>
+          <tr><td>Check the server is up</td><td><code>curl <span class="ph" data-ph="server">https://secureflow.apps.example.com</span>/api/health</code></td></tr>
+          <tr><td>See what would be sent</td><td><code>secureflow scan --dry-run</code></td></tr>
+          <tr><td>Scan and open the report</td><td><code>secureflow scan --open</code></td></tr>
+          <tr><td>Fail on High or Critical findings</td><td><code>secureflow scan --fail-on high</code></td></tr>
+          <tr><td>Put the project on a team dashboard</td><td><code>secureflow scan --group "Payments Team"</code></td></tr>
+          <tr><td>Scan one module of a monorepo</td><td><code>secureflow scan --path services/orders</code></td></tr>
+          <tr><td>Keep a copy of the report</td><td><code>secureflow scan --out report.md</code></td></tr>
+          <tr><td>Maven / Gradle / npm</td><td><code>mvn secureflow:scan</code> · <code>gradle secureflow</code> · <code>npm run secureflow</code></td></tr>
+        </table>
+      </div>
+      <p>Prefer to try SecureFlow on your own machine first, without the shared server? See the local kick-off guide: <code>docs/secureflow-developer-kickoff.html</code>.</p>
+    </section>
+
+  </main>
+</div>
+
+<footer>SecureFlow on OpenShift · developer guide · client version 0.1.0 · full reference: docs/developer-integration.md</footer>
+
+<script>
+  // Fill in the team's addresses once; every command on the page updates. Stored in this browser only.
+  (function () {
+    var KEY = 'secureflow-guide-addresses';
+    var inputs = { server: document.getElementById('in-server'), art: document.getElementById('in-art') };
+    function apply() {
+      Object.keys(inputs).forEach(function (k) {
+        var v = (inputs[k].value || '').trim().replace(/\/+$/, '');
+        if (!v) return;
+        document.querySelectorAll('[data-ph="' + k + '"]').forEach(function (el) { el.textContent = v; });
+      });
+    }
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      Object.keys(inputs).forEach(function (k) { if (saved[k]) inputs[k].value = saved[k]; });
+      var q = new URLSearchParams(location.search);               // ?server=...&art=... also works, for sharing
+      Object.keys(inputs).forEach(function (k) { if (q.get(k)) inputs[k].value = q.get(k); });
+    } catch (e) { /* storage unavailable: the page still works */ }
+    Object.keys(inputs).forEach(function (k) {
+      inputs[k].addEventListener('input', function () {
+        apply();
+        try {
+          var s = {}; Object.keys(inputs).forEach(function (n) { s[n] = inputs[n].value; });
+          localStorage.setItem(KEY, JSON.stringify(s));
+        } catch (e) { /* ignore */ }
+      });
+    });
+    apply();
+  })();
+
+  // Add a "Copy" button to every code block.
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (!navigator.clipboard) return;
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'copy'; btn.textContent = 'Copy';
+    btn.addEventListener('click', function () {
+      var clone = pre.cloneNode(true);
+      clone.querySelectorAll('button, .lbl').forEach(function (n) { n.remove(); });
+      navigator.clipboard.writeText(clone.innerText.trim()).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+
+  // Open the section named in the link (e.g. #w-ide).
+  function openTarget() {
+    var el = location.hash && document.querySelector(location.hash);
+    if (el && el.tagName === 'DETAILS') el.open = true;
+  }
+  window.addEventListener('hashchange', openTarget);
+  openTarget();
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var el = document.querySelector(a.getAttribute('href'));
+      if (el && el.tagName === 'DETAILS') el.open = true;
+    });
+  });
+</script>
+</body>
+</html>

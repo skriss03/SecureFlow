@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecureFlow Demo Q&amp;A Sheet</title>
+<style>
+  :root { --bg:#f7f8fb; --surface:#fff; --ink:#1b2233; --muted:#5b6477; --line:#e2e6ef; --accent:#3b5bdb; --accent-soft:#e8edff;
+          --ok:#1f8a4c; --ok-soft:#e4f6ec; --warn:#b36b00; --warn-soft:#fff3dd; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0e1320; --surface:#151c2e; --ink:#e6ebff; --muted:#9aa5c0; --line:#27314b; --accent:#8fa6ff; --accent-soft:#1d2745;
+            --ok:#55d08a; --ok-soft:#14301f; --warn:#f2b45a; --warn-soft:#36290f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 16px 50px; }
+  h1 { margin:0 0 4px; font-size:1.7rem; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  h2 { font-size:1.15rem; margin:26px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--accent); }
+  .pitch { background:var(--accent-soft); border-left:4px solid var(--accent); border-radius:10px; padding:12px 16px; margin:14px 0; font-size:1.02rem; }
+  .qa { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:8px 0; break-inside:avoid; }
+  .qa .q { font-weight:700; }
+  .qa .a { margin-top:3px; }
+  .qa .a small { color:var(--muted); display:block; margin-top:4px; }
+  .say, .dont { border-radius:10px; padding:12px 16px; margin:10px 0; border-left:4px solid; break-inside:avoid; }
+  .say { background:var(--ok-soft); border-color:var(--ok); }
+  .dont { background:var(--warn-soft); border-color:var(--warn); }
+  .say ul, .dont ul { margin:6px 0 0; padding-left:20px; }
+  code { font:.9em ui-monospace,Consolas,monospace; background:var(--accent-soft); padding:1px 6px; border-radius:5px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); font-size:.92rem; margin:8px 0; }
+  th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:var(--accent-soft); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  ol.demo { padding-left:22px; } ol.demo li { margin:4px 0; }
+  @media print { body { background:#fff; color:#000; font-size:12px; } .wrap { padding:0; } h2 { margin-top:14px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>SecureFlow Demo Q&amp;A Sheet</h1>
+<p class="sub">Likely questions from leadership and developers, with short, honest answers. Numbers below come from our own test runs.</p>
+
+<div class="pitch"><strong>30-second pitch.</strong> A developer runs one command, <code>secureflow scan</code>, in their cloned project. SecureFlow rebuilds the system's architecture from the code and configuration, scores its resilience and security, checks every dependency for known vulnerabilities, and gives back a report link that the whole team can open. It works the same for Java, .NET, Python, Angular, React and Node, and it can fail a build when serious findings are open.</div>
+
+<h2>Leadership questions</h2>
+
+<div class="qa"><div class="q">What problem does this solve?</div>
+<div class="a">Threat modelling and resilience reviews are manual, done once, and usually late. SecureFlow does a first pass in minutes, on any repository, every time the code changes, so risks show up before release and not after an incident.</div></div>
+
+<div class="qa"><div class="q">How is it different from the scanners we already have?</div>
+<div class="a">Most scanners look at code or libraries. SecureFlow looks at the <em>system</em>: which services call which, what has no timeout or circuit breaker, which database is a single point of failure, and what goes down if one component fails (blast-radius simulation). It also checks dependencies for known CVEs. It complements code scanners; it does not replace them, and it does not do code-level analysis (SAST).</div></div>
+
+<div class="qa"><div class="q">Can we trust AI-generated findings?</div>
+<div class="a">The AI only rebuilds the architecture model. The findings come from 26 fixed rules (14 resilience, 12 security) that run the same way every time, and each one cites the file and line it came from. CVEs come from a public vulnerability database (OSV), not from the AI. Extra AI observations are labelled as such, with lower confidence, and every assumption is listed.</div></div>
+
+<div class="qa"><div class="q">What does it cost to run?</div>
+<div class="a">The main cost is AI usage: each scan makes a few AI calls (build the model, review the findings). We have not measured a cost per scan yet; Foundry's usage view will show it after the pilot. Cost is controlled because scans only run on request, need a team token, and identical re-scans can replay from a local cache.
+<small>Say: "We will measure it in the pilot." Don't quote a figure.</small></div></div>
+
+<div class="qa"><div class="q">What did it find in your tests?</div>
+<div class="a">On the open-source <code>libfintx</code> banking library: Resilience 45 (D), Security 23 (F), 64 open findings (4 Critical, 25 High), 14 of them CVEs. On our deliberately flawed Spring sample it found Log4Shell (CVE-2021-44228) as Critical.</div></div>
+
+<div class="qa"><div class="q">How long does a scan take, and does it slow developers down?</div>
+<div class="a">Typically a few minutes, mostly the AI step. It never runs unless the developer starts it, and the optional Maven, Gradle and npm plugins are not part of a normal build. Failing a build on findings is opt-in (<code>--fail-on</code>); it is off by default.</div></div>
+
+<div class="qa"><div class="q">What does rollout take?</div>
+<div class="a">Platform team: deploy one container to OpenShift (image, Route, storage and settings are prepared), publish the client program to Artifactory, issue team tokens. Developers: a 5-minute one-time install, then one command.
+<small>Be clear: this is proven end to end on a local server. The OpenShift files are written but not yet tested on a real cluster.</small></div></div>
+
+<div class="qa"><div class="q">Does it replace human threat modelling?</div>
+<div class="a">No. It gives reviewers a head start, a consistent baseline and a model to discuss, so their time goes to judgement rather than drawing diagrams.</div></div>
+
+<div class="qa"><div class="q">What would you build next?</div>
+<div class="a">Candidates, not commitments: single sign-on instead of shared team tokens, a database so the server can run more than one copy, pull-request comments with the report link, an IDE plugin, and a usage and cost dashboard.</div></div>
+
+<h2>Security and risk questions</h2>
+
+<div class="qa"><div class="q">What leaves the developer's machine?</div>
+<div class="a">Only selected files (deployment, configuration, a limited number of source files that show how services connect, the README) and a list of dependency names and versions. Secret values (passwords, tokens, keys, connection-string passwords, private keys, passwords inside URLs) are replaced with <code>***REDACTED***</code> <em>before</em> upload. Nothing is compiled or run. <code>secureflow scan --dry-run</code> shows exactly what would be sent.</div></div>
+
+<div class="qa"><div class="q">Where does the AI run and who sees the code?</div>
+<div class="a">The server calls the AI service the organisation configured; in our setup that is Claude through Microsoft Foundry. Only the server talks to it. Developers never see the AI key.
+<small>For data-retention and training terms, point to the Foundry / Azure agreement rather than answering from memory.</small></div></div>
+
+<div class="qa"><div class="q">What is the "team token"? Is it the AI key?</div>
+<div class="a">No. The AI key stays on the server, in an OpenShift Secret. The team token is a password for the SecureFlow server that says "this request comes from an authorised team". It allows starting scans; reading a report link does not need it by default. One token per team means one team's token can be replaced without affecting the others.
+<small>Honest limit: today it is a shared token; the server checks it but does not record which team used it. SSO would be the upgrade.</small></div></div>
+
+<div class="qa"><div class="q">Who can see a report?</div>
+<div class="a">Anyone who can reach the server and has the link, typically colleagues on the company network. The platform team can require a token for reading as well (a setting). Reports are deleted after the retention period, 30 days by default.</div></div>
+
+<div class="qa"><div class="q">Is downloading and running an install script safe?</div>
+<div class="a">The guide downloads the script to a file first so it can be read before it runs, and it runs without admin rights. It does not use the "download and run in one step" pattern.</div></div>
+
+<h2>Developer questions</h2>
+
+<div class="qa"><div class="q">What do I need to install?</div>
+<div class="a">One small program, <code>secureflow</code>. No .NET, Java, Node or Python is needed to run it, and no admin rights.</div></div>
+
+<div class="qa"><div class="q">Does it upload my whole repository or run my code?</div>
+<div class="a">No to both. See "What leaves the machine" above. Use <code>--dry-run</code> to check.</div></div>
+
+<div class="qa"><div class="q">Which technologies are supported?</div>
+<div class="a">Full: Java / Spring (Maven and Gradle), .NET, Python (FastAPI, Flask, Django), Angular, React, Node.js. Partial: Go (deployment files and <code>go.mod</code> only). Any other stack gets an architecture report from its Docker, Kubernetes and Terraform files, but no CVE check.</div></div>
+
+<div class="qa"><div class="q">Can I use it from my IDE?</div>
+<div class="a">Yes, from the IDE's built-in terminal (IntelliJ, VS Code, Visual Studio, Eclipse), or as a saved one-click action. No IDE plugin is required.</div></div>
+
+<div class="qa"><div class="q">Why did it miss a vulnerability I know about?</div>
+<div class="a">It only checks versions written in a manifest or lockfile. Ranges (<code>^1.2</code>) and versions set by a parent or BOM cannot be known, so they are skipped rather than guessed. Commit the lockfile or pin the version.</div></div>
+
+<div class="qa"><div class="q">What if a finding is a deliberate trade-off?</div>
+<div class="a">Mark it <em>Accepted</em> in the report. It stays accepted on later scans and stops counting toward the build gate.</div></div>
+
+<div class="qa"><div class="q">Does the report link change when I scan again?</div>
+<div class="a">No. A project is identified by repository and branch, so a re-scan updates the same report and keeps the score history.</div></div>
+
+<h2>Be careful with these claims</h2>
+<div class="say"><strong>Safe to say</strong>
+<ul>
+  <li>"One command works for every stack we support."</li>
+  <li>"Secrets are removed on the developer's machine before anything is uploaded."</li>
+  <li>"Findings come from fixed rules with file and line evidence; the AI builds the model, and CVEs come from a public database."</li>
+  <li>"Built for OpenShift and proven end to end on a local server. On OpenShift, the only change for a developer is the server address and the token."</li>
+</ul></div>
+<div class="dont"><strong>Don't claim</strong>
+<ul>
+  <li>That it has been tested on OpenShift, or at what scale. It hasn't yet.</li>
+  <li>A cost per scan, or exact scan times. Say "a few minutes" and "we will measure it".</li>
+  <li>That it replaces code scanners or human reviewers.</li>
+  <li>Single sign-on, per-user audit or high availability. None of these exist yet: it is one server copy with file storage and shared team tokens.</li>
+  <li>That every language is fully covered. Go is partial, and unsupported stacks get no CVE check.</li>
+</ul></div>
+
+<h2>Demo safety checklist</h2>
+<table>
+  <tr><th>Before</th><th>Why</th></tr>
+  <tr><td>Check <code>/api/health</code> shows <code>"available":true</code> for the AI, and run one real scan an hour before.</td><td>Health only shows a key exists, not that it works. A real scan proves it.</td></tr>
+  <tr><td>Rehearse the exact project you will demo, so the AI answer is cached.</td><td>An identical re-scan replays the AI result from the local cache and is much faster. CVE lookups still need internet access.</td></tr>
+  <tr><td>Keep a finished report open in a second tab.</td><td>If the network or AI is slow, show the finished report and explain what was running.</td></tr>
+  <tr><td>Open a <em>new</em> terminal; run <code>secureflow --version</code> and <code>secureflow config</code>.</td><td>Confirms the right copy is installed and the server address and token are set.</td></tr>
+  <tr><td>Use a project with known results: the Maven sample (Log4Shell) or <code>libfintx</code>.</td><td>No surprises on stage.</td></tr>
+</table>
+
+<h2>Suggested 7-minute flow</h2>
+<ol class="demo">
+  <li><strong>Problem (30 s):</strong> manual, late, security-only threat modelling.</li>
+  <li><strong>One command (60 s):</strong> <code>secureflow scan --dry-run</code>, then show what would be sent and the redaction.</li>
+  <li><strong>Scan (90 s):</strong> <code>secureflow scan --open</code>; narrate the three labelled steps.</li>
+  <li><strong>Report (90 s):</strong> scores, a Critical finding with file and line, then the CVE list.</li>
+  <li><strong>Blast radius (45 s):</strong> pick a database, Simulate failure, show what goes down with it.</li>
+  <li><strong>Fix and rescan (60 s):</strong> propose a fix, apply it, show the score move and the same link.</li>
+  <li><strong>Gate and rollout (45 s):</strong> <code>--fail-on critical</code>, IDE and pipeline use, token and OpenShift in one slide.</li>
+</ol>
+
+</div>
+</body>
+</html>

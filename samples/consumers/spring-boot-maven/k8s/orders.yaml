@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orders-service }
+  template:
+    metadata:
+      labels: { app: orders-service }
+    spec:
+      containers:
+        - name: orders-service
+          image: shopfast/orders-service:1.0.0
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: orders-db
+spec:
+  replicas: 1
+  serviceName: orders-db
+  selector:
+    matchLabels: { app: orders-db }
+  template:
+    metadata:
+      labels: { app: orders-db }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:13
+          env:
+            - name: POSTGRES_PASSWORD
+              value: OrdersP@ss2024!

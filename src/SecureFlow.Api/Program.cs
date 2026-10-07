@@ -7,6 +7,7 @@ using SecureFlow.Api.Endpoints;
 using SecureFlow.Api.Options;
 using SecureFlow.Api.Projects;
 using SecureFlow.Ingest;
+using SecureFlow.Ingest.Diagrams;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +52,8 @@ builder.Services.AddSingleton(sfOptions);
 var ingestOptions = builder.Configuration.GetSection(RepoIngestOptions.Section).Get<RepoIngestOptions>() ?? new RepoIngestOptions();
 var depOptions = builder.Configuration.GetSection(DependencyScanOptions.Section).Get<DependencyScanOptions>() ?? new DependencyScanOptions();
 builder.Services.AddSingleton(depOptions);
+var diagramOptions = builder.Configuration.GetSection(DiagramOptions.Section).Get<DiagramOptions>() ?? new DiagramOptions();
+builder.Services.AddSingleton(new DiagramImporter(diagramOptions));
 
 // ----- Core services -----
 var dataDir = builder.Configuration["Storage:DataDir"] ?? "data";
@@ -76,15 +79,18 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? new[] { "http://localhost:5173" };
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod()));
 
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = 25 * 1024 * 1024);
-// Kestrel's default body cap is 30 MB; raise it if a larger digest upload is configured.
-builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = Math.Max(30L * 1024 * 1024, sfOptions.Upload.MaxDigestBytes));
+// Multipart uploads (images, diagrams): at least the original 25 MB, or the configured diagram limit plus headroom.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = Math.Max(25L * 1024 * 1024, diagramOptions.MaxUploadBytes + 1024 * 1024));
+// Kestrel's default body cap is 30 MB; raise it if a larger digest or diagram upload is configured.
+builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize =
+    Math.Max(30L * 1024 * 1024, Math.Max(sfOptions.Upload.MaxDigestBytes, diagramOptions.MaxUploadBytes + 1024 * 1024)));
 
 var app = builder.Build();
 
 app.UseCors();
 app.UseMiddleware<TokenAuthMiddleware>();
 app.MapProjectEndpoints();
+app.MapDiagramEndpoints();
 
 if (sfOptions.Auth.Enabled && sfOptions.Auth.Tokens.All(string.IsNullOrWhiteSpace))
     app.Logger.LogWarning("SecureFlow:Auth:Enabled is true but no tokens are configured; every write request will be rejected.");

@@ -33,7 +33,7 @@ public static class ProjectEndpoints
         ["payments-platform"] = ("NorthBank Payments", "A retail banking transfer and settlement platform: mostly sound, with a single-instance fraud service and an unauthenticated internal hop.", "payments-platform.png", "image/png"),
     };
 
-    private static string SamplePath(IHostEnvironment env, IConfiguration config, string file)
+    internal static string SamplePath(IHostEnvironment env, IConfiguration config, string file)
     {
         var dir = config["Storage:SamplesDir"] ?? Path.Combine("..", "..", "samples");
         if (!Path.IsPathRooted(dir)) dir = Path.Combine(env.ContentRootPath, dir);

@@ -90,3 +90,6 @@ export interface BlastRadiusResult {
 export interface Health { status: string; ai: { provider: string; available: boolean; error?: string | null }; projects: number; offline: boolean }
 export interface RuleInfo { id: string; category: FindingCategory; tag: string; defaultSeverity: Severity; title: string; rationale: string; mitigation: string }
 export interface SampleInfo { id: string; name: string; description: string }
+export interface DiagramFormat { format: string; name: string; tools: string; extensions: string[]; needsAi: boolean }
+export interface DiagramFormats { maxUploadBytes: number; formats: DiagramFormat[] }
+export interface SampleDiagram extends SampleInfo { needsAi: boolean }

@@ -27,6 +27,11 @@ public sealed class CachingArchitectureAi : IArchitectureAi
             new { digest.RepoUrl, digest.Commit, files = digest.Files.Select(f => new { f.Path, hash = Hash(f.Content) }), v = PromptVersion },
             () => _inner.ExtractFromRepoDigestAsync(digest, progress, ct), progress, ct);
 
+    public Task<ArchitectureModel> ExtractFromDocumentAsync(byte[] content, string mediaType, string format, string? hint, IProgress<string>? progress, CancellationToken ct) =>
+        _cache.GetOrAddAsync("extract-document", Name,
+            new { content = Convert.ToHexString(SHA256.HashData(content)), mediaType, format, hint, v = PromptVersion },
+            () => _inner.ExtractFromDocumentAsync(content, mediaType, format, hint, progress, ct), progress, ct);
+
     public Task<AiAnalysis> AnalyzeAsync(ArchitectureModel model, IReadOnlyList<Finding> ruleFindings, IProgress<string>? progress, CancellationToken ct) =>
         _cache.GetOrAddAsync("analyze", Name,
             new { model, findings = ruleFindings.Select(f => f.Id).Order(), v = PromptVersion },

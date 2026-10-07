@@ -45,6 +45,18 @@ public sealed class FoundryArchitectureAi : IArchitectureAi
         return AnthropicArchitectureAi.Normalize(AiJson.Parse<ArchitectureModel>(text));
     }
 
+    public async Task<ArchitectureModel> ExtractFromDocumentAsync(byte[] content, string mediaType, string format, string? hint, IProgress<string>? progress, CancellationToken ct)
+    {
+        var isPdf = mediaType == "application/pdf";
+        var req = RequestBuilder.ExtractDocument(format, hint, isPdf ? null : System.Text.Encoding.UTF8.GetString(content));
+        var blocks = new List<ContentBlockParam>();
+        if (isPdf) blocks.Add(new DocumentBlockParam { Source = new Base64PdfSource { Data = Convert.ToBase64String(content) } });
+        blocks.Add(new TextBlockParam { Text = req.UserText });
+        progress?.Report($"Reading the {format} diagram with {Name}...");
+        var text = await CallAsync(req, blocks, progress, ct);
+        return AnthropicArchitectureAi.Normalize(AiJson.Parse<ArchitectureModel>(text));
+    }
+
     public async Task<ArchitectureModel> ExtractFromRepoDigestAsync(RepoDigest digest, IProgress<string>? progress, CancellationToken ct)
     {
         var req = RequestBuilder.ExtractRepo(digest);

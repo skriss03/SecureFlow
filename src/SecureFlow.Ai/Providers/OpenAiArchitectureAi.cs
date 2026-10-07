@@ -34,6 +34,23 @@ public sealed class OpenAiArchitectureAi : IArchitectureAi
         return AnthropicArchitectureAi.Normalize(AiJson.Parse<ArchitectureModel>(text));
     }
 
+    public async Task<ArchitectureModel> ExtractFromDocumentAsync(byte[] content, string mediaType, string format, string? hint, IProgress<string>? progress, CancellationToken ct)
+    {
+        var isPdf = mediaType == "application/pdf";
+        var req = RequestBuilder.ExtractDocument(format, hint, isPdf ? null : System.Text.Encoding.UTF8.GetString(content));
+        // PDF input is marked experimental (OPENAI001) in the OpenAI SDK; it is the documented way to send a PDF.
+#pragma warning disable OPENAI001
+        var user = isPdf
+            ? new UserChatMessage(
+                ChatMessageContentPart.CreateFilePart(BinaryData.FromBytes(content), "application/pdf", "diagram.pdf"),
+                ChatMessageContentPart.CreateTextPart(req.UserText))
+            : new UserChatMessage(req.UserText);
+#pragma warning restore OPENAI001
+        progress?.Report($"Reading the {format} diagram with {Name}...");
+        var text = await CallAsync(req, user, progress, ct);
+        return AnthropicArchitectureAi.Normalize(AiJson.Parse<ArchitectureModel>(text));
+    }
+
     public async Task<ArchitectureModel> ExtractFromRepoDigestAsync(RepoDigest digest, IProgress<string>? progress, CancellationToken ct)
     {
         var req = RequestBuilder.ExtractRepo(digest);

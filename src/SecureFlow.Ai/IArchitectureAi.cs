@@ -16,6 +16,12 @@ public interface IArchitectureAi
 
     Task<ArchitectureModel> ExtractFromImageAsync(byte[] image, string mediaType, string? hint, IProgress<string>? progress, CancellationToken ct);
     Task<ArchitectureModel> ExtractFromRepoDigestAsync(RepoDigest digest, IProgress<string>? progress, CancellationToken ct);
+    /// <summary>
+    /// Reads a diagram file that is not an image and has no structured parser: a PDF (application/pdf) or text such as
+    /// SVG markup or an unfamiliar diagram language (text/*, image/svg+xml). <paramref name="format"/> names the source
+    /// ("pdf", "svg", ...) so the model knows what it is looking at.
+    /// </summary>
+    Task<ArchitectureModel> ExtractFromDocumentAsync(byte[] content, string mediaType, string format, string? hint, IProgress<string>? progress, CancellationToken ct);
     Task<AiAnalysis> AnalyzeAsync(ArchitectureModel model, IReadOnlyList<Finding> ruleFindings, IProgress<string>? progress, CancellationToken ct);
     Task<FixProposal> ProposeFixAsync(ArchitectureModel model, Finding target, IReadOnlyList<Finding> allFindings, RepoDigest? digest, IProgress<string>? progress, CancellationToken ct);
 }

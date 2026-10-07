@@ -46,6 +46,9 @@ switch (args_[0])
     case "scan":
         return await SecureFlow.Cli.ScanCommand.RunAsync(args_);
 
+    case "diagram":
+        return await SecureFlow.Cli.DiagramCommand.RunAsync(args_);
+
     case "config":
         return SecureFlow.Cli.ScanCommand.PrintConfig(args_);
 
@@ -143,6 +146,10 @@ static void Usage()
                             [--out report.md] [--open] [--json] [--dry-run] [--save-digest file.json] [--no-redact]
                             Builds the repo digest on this machine (secrets redacted), uploads it to a SecureFlow
                             server, waits for the analysis and prints the report URL. Exit 2 = --fail-on reached.
+        secureflow diagram  <file> [--hint "..."] [--open] [--dry-run] [--fail-on high]
+                            Analyse an architecture diagram from any tool: draw.io, Mermaid, PlantUML/C4, Structurizr,
+                            Visio (.vsdx, also Lucidchart exports), Excalidraw, Gliffy, or a PNG/PDF/SVG export.
+                            --dry-run parses structured formats and runs the rules locally (no upload, no AI).
         secureflow --version             Show the installed version and where it is installed
         secureflow config   [--path .]   Show resolved settings: --flag > SECUREFLOW_* env > .secureflow.yml > ~/.secureflow/config.yml > default
         secureflow analyze  [--sample shopfast|healthy | --model model.json] [--json] [--weights] [--fail-on critical|high|medium]

@@ -99,6 +99,21 @@ public static class ScanCommand
         else summary = await res.Content.ReadFromJsonAsync<ScanSummary>(Json);
         if (summary is null) { Console.Error.WriteLine("error: empty response from server."); return 1; }
 
+        return await FollowAsync(http, cfg, summary, log, jsonOut,
+            "[3/3] Server is analysing: architecture model (AI), resilience + STRIDE rules, CVE check of dependencies");
+    }
+
+    public static string Version =>
+        typeof(ScanCommand).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0]
+        ?? typeof(ScanCommand).Assembly.GetName().Version?.ToString() ?? "dev";
+
+    /// <summary>
+    /// Shared by `scan` and `diagram`: prints the report link, waits for the server to finish (unless --no-wait),
+    /// saves --out, prints the scores, opens --open and applies --fail-on. Returns the process exit code.
+    /// </summary>
+    internal static async Task<int> FollowAsync(HttpClient http, ClientConfig cfg, ScanSummary summary, TextWriter log, bool jsonOut, string analysingLine)
+    {
         log.WriteLine($"  Report: {summary.Url}");
         if (!cfg.GetBool("wait"))
         {
@@ -110,7 +125,7 @@ public static class ScanCommand
         var timeout = TimeSpan.FromSeconds(cfg.GetInt("timeoutSeconds") ?? 900);
         var poll = TimeSpan.FromSeconds(Math.Max(1, cfg.GetInt("pollSeconds") ?? 3));
         log.WriteLine();
-        log.WriteLine("[3/3] Server is analysing: architecture model (AI), resilience + STRIDE rules, CVE check of dependencies");
+        log.WriteLine(analysingLine);
         var sw = Stopwatch.StartNew();
         string? lastLog = null, lastStatus = null;
         while (summary.Status is not ("Ready" or "Error"))
@@ -151,7 +166,9 @@ public static class ScanCommand
         else
         {
             Console.WriteLine();
-            Console.WriteLine($"{summary.Name}  (scan #{summary.ScanCount}, {summary.Branch}{(summary.Commit is null ? "" : " @ " + summary.Commit)})");
+            Console.WriteLine(summary.Branch is null
+                ? $"{summary.Name}  (scan #{summary.ScanCount})"
+                : $"{summary.Name}  (scan #{summary.ScanCount}, {summary.Branch}{(summary.Commit is null ? "" : " @ " + summary.Commit)})");
             if (summary.ArchitectureAnalysed)
                 Console.WriteLine($"  Resilience {summary.Score?.Resilience} ({summary.Score?.ResilienceGrade})   Security {summary.Score?.Security} ({summary.Score?.SecurityGrade})");
             else
@@ -177,11 +194,6 @@ public static class ScanCommand
         return 0;
     }
 
-    public static string Version =>
-        typeof(ScanCommand).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
-            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0]
-        ?? typeof(ScanCommand).Assembly.GetName().Version?.ToString() ?? "dev";
-
     public static int PrintConfig(IReadOnlyList<string> args)
     {
         var path = Path.GetFullPath(Opt(args, "--path") ?? ".");
@@ -191,7 +203,7 @@ public static class ScanCommand
 
     private static Severity Sev(string s) => Enum.TryParse<Severity>(s, true, out var v) ? v : Severity.Info;
 
-    private static HttpClient CreateClient(ClientConfig cfg)
+    internal static HttpClient CreateClient(ClientConfig cfg)
     {
         var handler = new HttpClientHandler();
         if (cfg.GetBool("insecureSkipTlsVerify"))
@@ -239,7 +251,7 @@ public static class ScanCommand
         catch { return null; }
     }
 
-    private static void TryOpen(string url)
+    internal static void TryOpen(string url)
     {
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
         catch (Exception ex) { Console.Error.WriteLine("warning: could not open a browser: " + ex.Message); }

@@ -15,6 +15,23 @@ internal static class RequestBuilder
         return new Request(AiJson.Prompt("extract-image"), sb.ToString(), "architecture-model", "extract-image");
     }
 
+    /// <summary>A diagram file read as a document. Text content is inlined (with line numbers); a PDF is attached by the provider.</summary>
+    public static Request ExtractDocument(string format, string? hint, string? text)
+    {
+        var sb = new StringBuilder();
+        if (text is not null)
+        {
+            sb.Append("=== DIAGRAM FILE (").Append(format).Append(") ===\n");
+            var lines = text.Split('\n');
+            for (var i = 0; i < lines.Length; i++) sb.Append(i + 1).Append(": ").Append(lines[i].TrimEnd('\r')).Append('\n');
+            sb.Append('\n');
+        }
+        sb.Append("Extract the architecture model from the ").Append(text is null ? "attached " : "").Append(format).Append(" diagram")
+          .Append(text is null ? "." : " above.");
+        if (!string.IsNullOrWhiteSpace(hint)) sb.Append("\n\nContext from the user: ").Append(hint.Trim());
+        return new Request(AiJson.Prompt("extract-document"), sb.ToString(), "architecture-model", "extract-document");
+    }
+
     public static Request ExtractRepo(RepoDigest digest)
     {
         var sb = new StringBuilder();

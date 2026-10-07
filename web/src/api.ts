@@ -1,4 +1,4 @@
-import type { BlastRadiusResult, FixProposal, Group, Health, LogEntry, Project, ProjectStatus, ProjectSummary, RuleInfo, SampleInfo } from './types'
+import type { BlastRadiusResult, DiagramFormats, FixProposal, Group, Health, LogEntry, Project, ProjectStatus, ProjectSummary, RuleInfo, SampleDiagram, SampleInfo } from './types'
 
 async function handle<T>(res: Response): Promise<T> {
   if (res.ok) {
@@ -44,6 +44,17 @@ export const api = {
     if (hint) form.append('hint', hint)
     return upload<{ id: string }>('/api/projects/from-image', form)
   },
+  // Any diagram tool: structured formats are parsed exactly, images / PDF / SVG exports go to the AI.
+  diagramFormats: () => get<DiagramFormats>('/api/diagram-formats'),
+  sampleDiagrams: () => get<SampleDiagram[]>('/api/sample-diagrams'),
+  fromDiagram: (file: File, hint?: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (hint) form.append('hint', hint)
+    return upload<{ id: string; format: string; route: string }>('/api/projects/from-diagram', form)
+  },
+  fromSampleDiagram: (sample: string, hint?: string) =>
+    post<{ id: string; format: string; route: string }>('/api/projects/from-sample-diagram', { sample, hint: hint || null }),
   fromDrawio: (file: File) => {
     const form = new FormData()
     form.append('file', file)

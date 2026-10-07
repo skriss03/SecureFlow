@@ -48,7 +48,8 @@ public sealed class RepoIngest
         // React/Next/Vite (vite.config, next.config), Django (settings.py, settings/*.py), generic .env and gateways.
         ("config", Rx(@"(^|/)(appsettings[^/]*\.json|\.env[^/]*|[^/]*\.env|(application|bootstrap)[^/]*\.(ya?ml|properties)|config\.(json|ya?ml)|ocelot[^/]*\.json|nginx[^/]*\.conf|Caddyfile|haproxy\.cfg|launchSettings\.json|environment[^/]*\.ts|angular\.json|proxy\.conf\.(json|js)|(vite|next)\.config\.[mc]?[jt]s|settings\.py)$|(^|/)config/[^/]+\.(json|ya?ml)$|(^|/)settings/[^/]+\.py$")),
         ("entrypoints", Rx(@"(^|/)(Program\.cs|Startup\.cs|[^/]+\.csproj|Directory\.Packages\.props|package\.json|requirements[^/]*\.txt|pyproject\.toml|Pipfile|setup\.py|go\.mod|pom\.xml|(build|settings)\.gradle(\.kts)?|libs\.versions\.toml|main\.(go|py|ts)|app\.(py|js|ts)|server\.(js|ts)|index\.(js|ts)|manage\.py|wsgi\.py|asgi\.py|urls\.py|nest-cli\.json|[^/]*Application\.(java|kt))$")),
-        ("docs", Rx(@"(^|/)(README[^/]*|ARCHITECTURE[^/]*|DESIGN[^/]*)\.(md|txt)$|(^|/)docs/[^/]+\.md$")),
+        // Docs, plus architecture diagrams kept as code (Mermaid, PlantUML/C4, Structurizr): the AI reads them as context.
+        ("docs", Rx(@"(^|/)(README[^/]*|ARCHITECTURE[^/]*|DESIGN[^/]*)\.(md|txt)$|(^|/)docs/[^/]+\.md$|(^|/)[^/]+\.(mmd|mermaid|puml|plantuml|dsl)$")),
     };
 
     // Source files are included only if they mention service wiring, so we spend budget on what matters.

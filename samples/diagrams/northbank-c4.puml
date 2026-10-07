@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_LEFT_RIGHT()
+title NorthBank Payments
+
+Boundary(internet, "Internet") {
+  Person(customer, "Customer", "Mobile & Web banking")
+  System_Ext(cardnet, "Card Network", "Visa / Mastercard")
+}
+Boundary(dmz, "DMZ") {
+  Container(gateway, "API Gateway", "Azure APIM", "x2")
+}
+Boundary(private, "Private Network") {
+  Container(api, "Payments API", ".NET", "x2")
+  Container(fraud, "Fraud Service", "Python", "x1")
+  ContainerQueue(queue, "Settlement Queue", "Service Bus", "")
+  Container(worker, "Settlement Worker", "", "x1")
+  ContainerDb(db, "Payments DB", "SQL Server", "x1")
+  Container(vault, "Key Vault", "", "")
+  Container(monitor, "Monitoring", "App Insights", "")
+}
+
+Rel(customer, gateway, "OAuth", "HTTPS")
+Rel(gateway, api, "JWT", "HTTPS")
+Rel(api, fraud, "no auth", "HTTP")
+Rel(api, db, "SQL", "SQL")
+Rel(api, queue, "publish", "AMQPS", $tags="async")
+Rel(queue, worker, "subscribe", "AMQPS", $tags="async")
+Rel(worker, cardnet, "mTLS", "HTTPS")
+Rel(worker, db, "SQL", "SQL")
+Rel(api, vault, "managed identity", "HTTPS")
+Rel(api, monitor, "telemetry", "async", $tags="async")
+
+SHOW_LEGEND()
+@enduml

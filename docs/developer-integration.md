@@ -162,6 +162,47 @@ A monorepo is scanned in one run. Scan its root to get one model across all serv
 
 Versions inherited from a parent BOM (Spring Boot starters without a `<version>`) are only checked when a lockfile or explicit pin is present. SecureFlow does not guess versions.
 
+## 3b. Analysing a diagram (any tool)
+
+You don't need the code to get an analysis. Upload the architecture diagram you already have:
+
+```
+secureflow diagram docs/architecture.vsdx --open
+secureflow diagram architecture.mmd --dry-run      # parse + rules locally, nothing sent
+```
+
+In the web UI, use **Diagram from any tool**.
+
+| Tool | File | How it's read |
+|---|---|---|
+| draw.io / diagrams.net | `.drawio`, editable `.drawio.png` / `.drawio.svg` | parsed exactly, no AI |
+| Microsoft Visio | `.vsdx` | parsed exactly (stencils, connectors, containers) |
+| Lucidchart | File → Export → Visio (`.vsdx`) | parsed exactly, via the Visio reader |
+| Mermaid | `.mmd`, `.mermaid`, ```` ```mermaid ```` blocks in `.md` | parsed exactly (flowchart, architecture-beta, C4) |
+| PlantUML / C4-PlantUML | `.puml`, `.plantuml` | parsed exactly |
+| Structurizr DSL | `.dsl` | parsed exactly |
+| Excalidraw | `.excalidraw` | parsed exactly |
+| Gliffy (Confluence / Jira) | `.gliffy` | parsed exactly (best effort; falls back to the AI) |
+| Figma, Miro, Canva, PowerPoint, anything else | PNG / JPEG / PDF / SVG export | read by the AI |
+| Visio `.vsd` (old), Figma `.fig` | | not readable: save as `.vsdx` / export PNG, SVG or PDF |
+
+What "parsed exactly" means:
+- Shapes, labels, arrows and zones are read from the file itself, with no AI and the same result every time.
+- The same system drawn in two tools gives the same findings.
+- Text formats (Mermaid, PlantUML, Structurizr) cite `file:line` as evidence.
+
+The AI is used only for pictures and exports without structure. It is also the fallback when a structured file has nothing the parser can use.
+
+How the diagram is read:
+- **Component types** come from the shape or stencil (a cylinder or "Database" stencil is a database) and from words in the label ("Redis", "Kafka", "Key Vault").
+- **Annotations** in labels are picked up, for example `x2` (replicas), `multi-AZ`, `backup`, `HTTPS`, `JWT`, `mTLS` and `no auth`.
+- **Dashed arrows** are treated as asynchronous.
+- **Boxes drawn around other boxes** (zones, subgraphs, Visio containers) become trust boundaries.
+
+Adding the replica count, protocol and auth to your labels gives a much more precise report.
+
+`samples/diagrams/` has one system (NorthBank Payments) in every format, with notes on how each file was made and which ones were checked in their real tool.
+
 ## 4. Settings reference
 
 Each setting is resolved in this order:
@@ -217,6 +258,7 @@ All settings are in `src/SecureFlow.Api/appsettings.json`. Each one can be overr
 | `SecureFlow__Scan__AutoDependencyScan` | CVE check on every scan | on | on |
 | `SecureFlow__Scan__ReuseProjectByKey` | same key updates the same project | on | on |
 | `SecureFlow__Scan__AllowWithoutAi` | accept uploads with no AI provider (CVE-only report) | on | your choice |
+| `Diagrams__MaxUploadBytes`, `__AiFallback`, `__AiTextFallback`, `__DisabledFormats__N`, `__ExtraTypeKeywords__<Type>__N` | diagram upload limit, AI fallback, formats to switch off, extra words that mark a component type | defaults | defaults |
 | `DependencyScan__OsvBaseUrl` | OSV API or internal mirror | osv.dev | mirror if no egress |
 | `Ingest__*` | digest budgets, skip dirs, extra patterns | defaults | defaults |
 

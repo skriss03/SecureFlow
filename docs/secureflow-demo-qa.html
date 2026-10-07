@@ -73,6 +73,10 @@
 <div class="qa"><div class="q">What would you build next?</div>
 <div class="a">Candidates, not commitments: single sign-on instead of shared team tokens, a database so the server can run more than one copy, pull-request comments with the report link, an IDE plugin, and a usage and cost dashboard.</div></div>
 
+<div class="qa"><div class="q">Does it only work with draw.io?</div>
+<div class="a">No. Diagram files from draw.io, Visio, Lucidchart (exported as .vsdx), Mermaid, PlantUML / C4, Structurizr, Excalidraw and Gliffy are parsed exactly, with no AI. Exports from any other tool (Figma, Miro, PowerPoint: PNG, PDF or SVG) and whiteboard photos are read by the AI. The same system drawn in different tools gives the same findings; <code>samples/diagrams</code> shows one system in every format.
+<small>Be precise: the samples were generated in each tool's file format, not exported from the tools. The Visio, Mermaid, PlantUML and Structurizr files were checked in real tools; Excalidraw and Gliffy were not yet.</small></div></div>
+
 <h2>Security and risk questions</h2>
 
 <div class="qa"><div class="q">What leaves the developer's machine?</div>
@@ -119,6 +123,7 @@
 <div class="say"><strong>Safe to say</strong>
 <ul>
   <li>"One command works for every stack we support."</li>
+  <li>"It takes a diagram from any tool. Structured files are parsed exactly with no AI; images, PDFs and SVG exports are read by the AI."</li>
   <li>"Secrets are removed on the developer's machine before anything is uploaded."</li>
   <li>"Findings come from fixed rules with file and line evidence; the AI builds the model, and CVEs come from a public database."</li>
   <li>"Built for OpenShift and proven end to end on a local server. On OpenShift, the only change for a developer is the server address and the token."</li>
@@ -130,6 +135,7 @@
   <li>That it replaces code scanners or human reviewers.</li>
   <li>Single sign-on, per-user audit or high availability. None of these exist yet: it is one server copy with file storage and shared team tokens.</li>
   <li>That every language is fully covered. Go is partial, and unsupported stacks get no CVE check.</li>
+  <li>That the diagram samples were exported from each tool, or that the Excalidraw and Gliffy files were checked in those tools. They were generated in the tools' formats, and those two have not been opened in the real tools yet.</li>
 </ul></div>
 
 <h2>Demo safety checklist</h2>

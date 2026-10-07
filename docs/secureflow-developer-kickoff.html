@@ -124,6 +124,7 @@
     <a class="sub" href="#node">Node.js</a>
     <a class="sub" href="#go">Go</a>
     <a class="sub" href="#other">Anything else</a>
+    <a href="#diagrams">Analyse a diagram</a>
     <a href="#options">Useful options</a>
     <a href="#build">Run from your build</a>
     <a href="#gate">Fail a build on findings</a>
@@ -410,6 +411,27 @@ secureflow scan --open</pre>
       </details>
     </section>
 
+    <section id="diagrams">
+      <h2>Analyse a diagram from any tool</h2>
+      <p>No code needed: upload the architecture diagram you already have. In the web UI use <em>Diagram from any tool</em>, or from a terminal:</p>
+      <pre>secureflow diagram architecture.vsdx --open
+secureflow diagram architecture.mmd --dry-run      <span class="c"># parse + rules on this machine, nothing sent</span></pre>
+      <table>
+        <tr><th>Tool</th><th>File to upload</th><th>How it is read</th></tr>
+        <tr><td>draw.io / diagrams.net</td><td><code>.drawio</code>, editable <code>.drawio.png</code> / <code>.drawio.svg</code></td><td>Parsed exactly, no AI</td></tr>
+        <tr><td>Microsoft Visio</td><td><code>.vsdx</code></td><td>Parsed exactly</td></tr>
+        <tr><td>Lucidchart</td><td>File → Export → Visio (<code>.vsdx</code>)</td><td>Parsed exactly</td></tr>
+        <tr><td>Mermaid</td><td><code>.mmd</code>, or <code>```mermaid</code> blocks in <code>.md</code></td><td>Parsed exactly, with file:line evidence</td></tr>
+        <tr><td>PlantUML / C4-PlantUML</td><td><code>.puml</code></td><td>Parsed exactly, with file:line evidence</td></tr>
+        <tr><td>Structurizr DSL</td><td><code>.dsl</code></td><td>Parsed exactly, with file:line evidence</td></tr>
+        <tr><td>Excalidraw</td><td><code>.excalidraw</code></td><td>Parsed exactly</td></tr>
+        <tr><td>Gliffy (Confluence)</td><td><code>.gliffy</code></td><td>Parsed exactly (best effort; falls back to the AI)</td></tr>
+        <tr><td>Figma, Miro, PowerPoint, anything else</td><td>PNG, JPEG, PDF or SVG export; whiteboard photo</td><td>Read by the AI</td></tr>
+      </table>
+      <div class="tip">"Parsed exactly" means no AI and the same result every time: the same system drawn in Visio, Mermaid or draw.io gives the same findings. Put replica counts, protocols and auth in your labels (<code>x2</code>, <code>HTTPS</code>, <code>JWT</code>, <code>no auth</code>) and draw zones as boxes around services for the most precise report. Dashed arrows are read as asynchronous.</div>
+      <p>Try it with <code>samples\diagrams\</code>: the same NorthBank Payments system in every format.</p>
+    </section>
+
     <section id="options">
       <h2>Useful options</h2>
       <p>These work the same on every stack.</p>
@@ -522,6 +544,7 @@ token: &lt;your team token&gt;</pre>
           <tr><td>Scan and fail the build on High or Critical</td><td><code>secureflow scan --fail-on high</code></td></tr>
           <tr><td>Put the project on a team dashboard</td><td><code>secureflow scan --group "Payments Team"</code></td></tr>
           <tr><td>See which settings are in effect</td><td><code>secureflow config</code></td></tr>
+          <tr><td>Analyse a diagram from any tool</td><td><code>secureflow diagram architecture.vsdx --open</code></td></tr>
           <tr><td>Maven / Gradle / npm</td><td><code>mvn secureflow:scan</code> · <code>gradle secureflow</code> · <code>npm run secureflow</code></td></tr>
         </table>
       </div>

@@ -1,0 +1,33 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="northbank" name="NorthBank Payments">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zone-internet" value="Internet" style="swimlane;dashed=1;html=1;startSize=24;fillColor=none;" vertex="1" parent="1"><mxGeometry x="12" y="164" width="226" height="424" as="geometry" /></mxCell>
+        <mxCell id="zone-dmz" value="DMZ" style="swimlane;dashed=1;html=1;startSize=24;fillColor=none;" vertex="1" parent="1"><mxGeometry x="242" y="164" width="226" height="144" as="geometry" /></mxCell>
+        <mxCell id="zone-private" value="Private Network" style="swimlane;dashed=1;html=1;startSize=24;fillColor=none;" vertex="1" parent="1"><mxGeometry x="472" y="24" width="686" height="564" as="geometry" /></mxCell>
+        <mxCell id="customer" value="Customer (Mobile &amp; Web banking)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="zone-internet"><mxGeometry x="28" y="46" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="cardnet" value="Card Network (Visa / Mastercard)" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;" vertex="1" parent="zone-internet"><mxGeometry x="28" y="326" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="gateway" value="API Gateway (Azure APIM) x2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" vertex="1" parent="zone-dmz"><mxGeometry x="28" y="46" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="api" value="Payments API (.NET) x2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="zone-private"><mxGeometry x="28" y="186" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="fraud" value="Fraud Service (Python) x1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="zone-private"><mxGeometry x="258" y="46" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="queue" value="Settlement Queue (Service Bus)" style="shape=mxgraph.flowchart.stored_data;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="zone-private"><mxGeometry x="258" y="326" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="worker" value="Settlement Worker x1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="zone-private"><mxGeometry x="258" y="466" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="db" value="Payments DB (SQL Server) x1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#f8cecc;" vertex="1" parent="zone-private"><mxGeometry x="28" y="326" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="vault" value="Key Vault" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" vertex="1" parent="zone-private"><mxGeometry x="488" y="46" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="monitor" value="Monitoring (App Insights)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;" vertex="1" parent="zone-private"><mxGeometry x="488" y="326" width="170" height="70" as="geometry" /></mxCell>
+        <mxCell id="e1" value="HTTPS OAuth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="customer" target="gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="HTTPS JWT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="gateway" target="api"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="HTTP no auth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="fraud"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="db"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="AMQPS publish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;endArrow=block;" edge="1" parent="1" source="api" target="queue"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="AMQPS subscribe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;endArrow=block;" edge="1" parent="1" source="queue" target="worker"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="HTTPS mTLS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="worker" target="cardnet"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="worker" target="db"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" value="HTTPS managed identity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="vault"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" value="async telemetry" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;endArrow=block;" edge="1" parent="1" source="api" target="monitor"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

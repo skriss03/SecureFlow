@@ -1,6 +1,6 @@
 # SecureFlow
 
-**AI-enabled resilience and threat modeling.** Feed it an architecture diagram, a whiteboard photo, a draw.io file or a git repository. It rebuilds the architecture as a model, runs deterministic resilience and STRIDE rules with evidence, simulates blast radius, proposes fixes with AI, and re-scores live. Works at design time and as continuous feedback in CI.
+**AI-enabled resilience and threat modeling.** Feed it an architecture diagram from any tool (draw.io, Visio, Lucidchart, Mermaid, PlantUML/C4, Structurizr, Excalidraw, Gliffy, or an image / PDF / SVG export from Figma, Miro or anything else), a whiteboard photo, or a git repository. It rebuilds the architecture as a model, runs deterministic resilience and STRIDE rules with evidence, simulates blast radius, proposes fixes with AI, and re-scores live. Works at design time and as continuous feedback in CI.
 
 Built for a one-day hackathon. Runs on one machine with one command.
 
@@ -8,7 +8,7 @@ Built for a one-day hackathon. Runs on one machine with one command.
 
 | | Microsoft Threat Modeling Tool | SecureFlow |
 |---|---|---|
-| Input | Draw by hand | Photo, diagram, draw.io, or **the repo itself** |
+| Input | Draw by hand | **Any diagram tool** (draw.io, Visio, Lucidchart, Mermaid, PlantUML/C4, Structurizr, Excalidraw, Gliffy, images, PDF, SVG), photo, or **the repo itself** |
 | Scope | Security (STRIDE) | **Resilience + Security** in one engine |
 | Findings | Rule templates | Rules **with evidence** (`path:line`) plus AI context |
 | Failure analysis | None | **Blast-radius simulation**: click a node, see what dies |
@@ -36,6 +36,20 @@ Development mode with hot reload: `.\scripts\run.ps1 -Dev` (API on :5180, Vite o
 4. **Review** (AI): executive summary, most-likely-bad-day, top 5 consolidated risks, contextual findings the rules cannot see, quick wins.
 5. **Simulate**: kill any component; synchronous callers without a circuit breaker go down, async or circuit-broken callers degrade. Deterministic and instant.
 6. **Fix**: AI proposes a model patch plus copy-pasteable code (Polly/Resilience handlers, Kubernetes YAML, Terraform...). Apply it, watch the score move, export the report.
+
+## Diagrams from any tool
+
+Upload a diagram (web UI → *Diagram from any tool*, or `secureflow diagram <file>`). Files with structure are parsed exactly, with no AI and the same result every time:
+
+- draw.io (`.drawio`, editable `.drawio.png` / `.drawio.svg`)
+- Visio `.vsdx`, which also covers Lucidchart and Gliffy exported as Visio
+- Mermaid (`.mmd`, or ```` ```mermaid ```` blocks in Markdown)
+- PlantUML and C4-PlantUML (`.puml`)
+- Structurizr DSL (`.dsl`)
+- Excalidraw
+- Gliffy
+
+Anything else is read by the AI: images, PDF and SVG exports from Figma, Miro or any other tool, and whiteboard photos. Every format goes through the same shape-to-architecture mapping, so the same system drawn in different tools gets the same rule findings (the AI review on top may word a few contextual notes differently). `samples/diagrams/` holds one system in every format to show it.
 
 ## Scanning your own application
 
@@ -78,6 +92,7 @@ samples/            demo repo, consumer apps per stack (samples/consumers), draw
 
 ```
 secureflow scan     [--path .] [--server URL] [--token T] [--fail-on high] [--out report.md] [--dry-run]
+secureflow diagram  <file> [--dry-run]          # any diagram tool; --dry-run parses and runs the rules locally
 secureflow config   # resolved settings and where each came from
 secureflow analyze  --sample shopfast|healthy | --model model.json  [--json] [--fail-on critical|high|medium]
 secureflow simulate --sample shopfast --kill orders-db

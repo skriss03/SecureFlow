@@ -20,6 +20,13 @@ data:
   # anthropic | openai | foundry; the matching key lives in the Secret.
   Ai__Provider: "anthropic"
   Ai__CacheEnabled: "true"
+  # Diagram uploads from any tool. Structured formats never need the AI; images / PDF / SVG do.
+  Diagrams__MaxUploadBytes: "20971520"
+  Diagrams__AiFallback: "true"
+  Diagrams__AiTextFallback: "true"
+  Diagrams__MaxAiTextChars: "200000"
+  # Diagrams__DisabledFormats__0: "gliffy"
+  # Diagrams__ExtraTypeKeywords__Database__0: "oracle"
   # Use an internal OSV mirror/proxy if the cluster cannot reach osv.dev.
   DependencyScan__OsvBaseUrl: "https://api.osv.dev/"
   DependencyScan__TimeoutSeconds: "60"

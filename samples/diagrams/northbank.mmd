@@ -1,0 +1,31 @@
+---
+title: NorthBank Payments
+---
+flowchart LR
+  subgraph internet["Internet"]
+    customer(["Customer (Mobile & Web banking)"])
+    cardnet{{"Card Network (Visa / Mastercard)"}}
+  end
+  subgraph dmz["DMZ"]
+    gateway["API Gateway (Azure APIM) x2"]
+  end
+  subgraph private["Private Network"]
+    api["Payments API (.NET) x2"]
+    fraud["Fraud Service (Python) x1"]
+    queue[/"Settlement Queue (Service Bus)"/]
+    worker["Settlement Worker x1"]
+    db[("Payments DB (SQL Server) x1")]
+    vault["Key Vault"]
+    monitor["Monitoring (App Insights)"]
+  end
+
+  customer -->|HTTPS OAuth| gateway
+  gateway -->|HTTPS JWT| api
+  api -->|HTTP no auth| fraud
+  api -->|SQL| db
+  api -.->|AMQPS publish| queue
+  queue -.->|AMQPS subscribe| worker
+  worker -->|HTTPS mTLS| cardnet
+  worker -->|SQL| db
+  api -->|HTTPS managed identity| vault
+  api -.->|async telemetry| monitor

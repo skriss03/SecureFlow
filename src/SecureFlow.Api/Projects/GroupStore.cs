@@ -28,6 +28,20 @@ public sealed class GroupStore
 
     public Group? Get(string id) => _groups.TryGetValue(id, out var g) ? g : null;
 
+    /// <summary>Resolves a group by id or (case-insensitive) name, optionally creating it by name.</summary>
+    public Group? Resolve(string idOrName, bool create)
+    {
+        if (Get(idOrName) is { } byId) return byId;
+        var byName = _groups.Values.FirstOrDefault(g => string.Equals(g.Name, idOrName.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (byName is not null || !create) return byName;
+        lock (_saveLock)
+        {
+            // Re-check under the lock so two concurrent scans naming the same new group create it once.
+            return _groups.Values.FirstOrDefault(g => string.Equals(g.Name, idOrName.Trim(), StringComparison.OrdinalIgnoreCase))
+                ?? Add(idOrName.Trim());
+        }
+    }
+
     public Group Add(string name)
     {
         var g = new Group { Name = name };

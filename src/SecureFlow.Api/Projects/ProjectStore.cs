@@ -26,6 +26,11 @@ public sealed class ProjectStore
 
     public Project? Get(string id) => _projects.TryGetValue(id, out var p) ? p : null;
 
+    /// <summary>Most recently created project with this key, if any.</summary>
+    public Project? FindByKey(string key) =>
+        _projects.Values.Where(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+
     public Project Add(Project p)
     {
         _projects[p.Id] = p;

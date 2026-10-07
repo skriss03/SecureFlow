@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using SecureFlow.Ai;
+using SecureFlow.Api.Options;
 using SecureFlow.Api.Projects;
 using SecureFlow.Api.Reports;
 using SecureFlow.Core.Model;
@@ -21,6 +22,9 @@ public static class ProjectEndpoints
     public record GroupRequest(string Name);
     public record AssignGroupRequest(string? GroupId);
     public record SampleImageRequest(string Sample, string? Hint);
+
+    /// <summary>Upload from the CLI / build plugins: a digest built (and redacted) on the developer's machine.</summary>
+    public record ScanRequest(string? ProjectKey, string? Name, string? Group, string? Branch, string? Commit, string? Source, RepoDigest Digest);
 
     /// <summary>Architecture images shipped in samples/, so the vision path can be demoed without a file to hand.</summary>
     private static readonly Dictionary<string, (string Name, string Description, string File, string MediaType)> SampleImages = new()
@@ -46,12 +50,16 @@ public static class ProjectEndpoints
     {
         var api = app.MapGroup("/api");
 
-        api.MapGet("/health", (ProjectStore store, AiRegistry ai) => Results.Ok(new
+        api.MapGet("/health", (ProjectStore store, AiRegistry ai, SecureFlowOptions options, DependencyScanner deps, HttpRequest request) => Results.Ok(new
         {
             status = "ok",
             ai = new { provider = ai.Name, available = ai.Available, error = ai.Error },
             projects = store.All.Count(),
             offline = Environment.GetEnvironmentVariable("SECUREFLOW_AI_OFFLINE") is "1" or "true",
+            baseUrl = options.BaseUrl(request),
+            authRequired = options.Auth.Enabled,
+            retentionDays = options.Retention.Enabled ? options.Retention.Days : (int?)null,
+            dependencyScan = deps.Enabled && options.Scan.AutoDependencyScan,
         }));
 
         api.MapGet("/rules", () => Results.Ok(RuleCatalog.Describe()));
@@ -181,7 +189,7 @@ public static class ProjectEndpoints
 
         // A "root" URL (https://github.com/<owner>, no repo segment) fans out into one project per
         // repository under that org/user instead of a single project; a specific repo URL behaves as before.
-        api.MapPost("/projects/from-repo", async (RepoRequest req, ProjectPipeline pipeline, AiRegistry ai, RepoIngest ingest, OrgScanner orgScanner, CancellationToken ct) =>
+        api.MapPost("/projects/from-repo", async (RepoRequest req, ProjectPipeline pipeline, AiRegistry ai, RepoIngest ingest, OrgScanner orgScanner, SecureFlowOptions options, CancellationToken ct) =>
         {
             if (!ai.Available) return Results.Problem(statusCode: 503, title: "AI provider unavailable", detail: ai.Error);
             if (string.IsNullOrWhiteSpace(req.Url)) return Results.BadRequest(new { error = "url is required" });
@@ -204,11 +212,82 @@ public static class ProjectEndpoints
             pipeline.Start(p, async (progress, ct) =>
             {
                 var digest = await ingest.BuildAsync(req.Url, req.Branch, progress, ct);
+                if (options.Scan.RedactServerSideScans) ingest.Redact(digest, progress);
                 p.Digest = digest;
+                p.Branch = digest.Branch; p.Commit = digest.Commit;
                 return await ai.Ai!.ExtractFromRepoDigestAsync(digest, progress, ct);
             });
             return Results.Accepted($"/api/projects/{p.Id}", new { id = p.Id });
         });
+
+        // ----- Developer integration: CLI and build plugins upload a locally built digest -----
+        // Same pipeline as a repo scan; the only difference is where the digest was built. With a
+        // projectKey, repeat scans update one project so its report URL stays stable.
+        api.MapPost("/scans", async (HttpRequest http, ProjectPipeline pipeline, ProjectStore store, GroupStore groups, AiRegistry ai, SecureFlowOptions options) =>
+        {
+            if (!ai.Available && !options.Scan.AllowWithoutAi) return Results.Problem(statusCode: 503, title: "AI provider unavailable", detail: ai.Error);
+            if (http.ContentLength is { } len && len > options.Upload.MaxDigestBytes)
+                return Results.Problem(statusCode: 413, title: "Digest too large", detail: $"{len} bytes exceeds SecureFlow:Upload:MaxDigestBytes ({options.Upload.MaxDigestBytes}). Lower Ingest:BudgetChars on the client or raise the server limit.");
+
+            ScanRequest? req;
+            try { req = await http.ReadFromJsonAsync<ScanRequest>(ScanJson); }
+            catch (JsonException ex) { return Results.BadRequest(new { error = "Invalid scan payload: " + ex.Message }); }
+            if (req?.Digest is null || (req.Digest.Files.Count == 0 && req.Digest.Dependencies.Count == 0))
+                return Results.BadRequest(new { error = "A digest with at least one file is required." });
+
+            string? groupId = null;
+            if (!string.IsNullOrWhiteSpace(req.Group))
+            {
+                var g = groups.Resolve(req.Group, options.Scan.AutoCreateGroups);
+                if (g is null) return Results.BadRequest(new { error = $"Unknown group '{req.Group}' (SecureFlow:Scan:AutoCreateGroups is off)." });
+                groupId = g.Id;
+            }
+
+            var key = string.IsNullOrWhiteSpace(req.ProjectKey) ? null : req.ProjectKey.Trim();
+            var name = string.IsNullOrWhiteSpace(req.Name) ? (key?.Split('@')[0] ?? "uploaded-repo") : req.Name.Trim();
+            var digest = req.Digest;
+            ProjectPipeline.Extractor extract = async (progress, ct) =>
+            {
+                progress.Report($"Received digest from {req.Source ?? "client"}: {digest.Files.Count} files, {digest.Dependencies.Count} dependencies, {digest.IncludedBytes / 1000}k characters.");
+                if (!ai.Available)
+                {
+                    // Deterministic-only scan: no architecture model, but the dependency CVE scan still runs.
+                    progress.Report($"Architecture extraction skipped: no AI provider is configured on the server ({ai.Error}). Dependency vulnerabilities are still checked.");
+                    return new ArchitectureModel { Name = name };
+                }
+                return await ai.Ai!.ExtractFromRepoDigestAsync(digest, progress, ct);
+            };
+
+            var existing = options.Scan.ReuseProjectByKey && key is not null ? store.FindByKey(key) : null;
+            if (existing is not null && existing.Status is not (ProjectStatus.Ready or ProjectStatus.Error))
+                return Results.Conflict(new { error = $"A scan of '{key}' is already running.", id = existing.Id, url = options.ReportUrl(http, existing.Id) });
+
+            Project p;
+            if (existing is not null)
+            {
+                p = existing;
+                p.Digest = digest;
+                p.Branch = digest.Branch ?? req.Branch;
+                p.Commit = digest.Commit ?? req.Commit;
+                p.SourceRef = digest.RepoUrl;
+                if (groupId is not null) p.GroupId = groupId;
+                pipeline.Rescan(p, extract);
+            }
+            else
+            {
+                p = new Project
+                {
+                    Name = name, Source = "repo", SourceRef = digest.RepoUrl, Key = key, GroupId = groupId,
+                    Branch = digest.Branch ?? req.Branch, Commit = digest.Commit ?? req.Commit, Digest = digest,
+                };
+                pipeline.Start(p, extract);
+            }
+            return Results.Accepted($"/api/projects/{p.Id}/summary", ScanResponse(p, http, options));
+        });
+
+        // Compact status for clients polling a scan; the full project document is large.
+        api.MapGet("/projects/{id}/summary", (string id, ProjectStore store, HttpRequest http, SecureFlowOptions options) =>
+            store.Get(id) is { } p ? Results.Ok(ScanResponse(p, http, options)) : Results.NotFound());
 
         api.MapGet("/projects/{id}", (string id, ProjectStore store) =>
             store.Get(id) is { } p ? Results.Ok(p) : Results.NotFound());
@@ -253,36 +332,18 @@ public static class ProjectEndpoints
             }
         });
 
-        api.MapPost("/projects/{id}/scan-vulnerabilities", async (string id, ProjectStore store, DependencyScanner deps, CancellationToken ct) =>
+        api.MapPost("/projects/{id}/scan-vulnerabilities", async (string id, ProjectStore store, ProjectPipeline pipeline, CancellationToken ct) =>
         {
             var p = store.Get(id);
             if (p is null) return Results.NotFound();
             if (p.Digest is null) return Results.BadRequest(new { error = "No dependency manifest available. Vulnerability scanning needs a repo scan (image/draw.io/sample projects have no package manifests to check)." });
-
-            var progress = new Progress<string>(msg => p.AddLog(msg));
-            List<Finding> fresh;
-            try { fresh = await deps.ScanAsync(p.Digest, progress, ct); }
-            catch (Exception ex)
+            try { await pipeline.ScanDependenciesAsync(p, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 p.AddLog("Vulnerability scan failed: " + ex.Message, "error");
                 store.Save(p);
-                return Results.Problem(statusCode: 502, title: "OSV.dev lookup failed", detail: ex.Message);
+                return Results.Problem(statusCode: 502, title: "OSV lookup failed", detail: ex.Message);
             }
-
-            // Preserve Fixed/Accepted status across a re-scan of the same advisory, same as rule findings do.
-            var previous = p.Findings.Where(f => f.Category == FindingCategory.Vulnerability)
-                .GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
-            foreach (var f in fresh)
-                if (previous.TryGetValue(f.Id, out var old) && old.Status != FindingStatus.Open)
-                    f.Status = old.Status;
-
-            p.Findings = p.Findings.Where(f => f.Category != FindingCategory.Vulnerability)
-                .Concat(fresh)
-                .OrderBy(f => f.Status).ThenByDescending(f => f.Severity).ThenByDescending(f => f.Confidence).ToList();
-            p.Score = Core.Scoring.Scorer.Score(p.Findings);
-            p.Snapshot($"Vulnerability scan: {fresh.Count(f => f.Status == FindingStatus.Open)} open");
-            p.AddLog($"Vulnerability scan: {fresh.Count} advisory match(es) against dependency manifests.");
-            store.Save(p);
             return Results.Ok(p);
         });
 
@@ -349,5 +410,34 @@ public static class ProjectEndpoints
             store.Get(id) is { } p ? Results.Text(ReportBuilder.Markdown(p), "text/markdown; charset=utf-8") : Results.NotFound());
 
         return app;
+    }
+
+    private static readonly JsonSerializerOptions ScanJson = new(AiJson.Options) { PropertyNameCaseInsensitive = true };
+
+    private static object ScanResponse(Project p, HttpRequest http, SecureFlowOptions options)
+    {
+        var baseUrl = options.BaseUrl(http);
+        return new
+        {
+            id = p.Id,
+            key = p.Key,
+            name = p.Name,
+            status = p.Status,
+            error = p.Error,
+            scanCount = p.ScanCount,
+            branch = p.Branch,
+            commit = p.Commit,
+            url = options.ReportUrl(http, p.Id),
+            reportMarkdownUrl = $"{baseUrl}/api/projects/{p.Id}/report",
+            statusUrl = $"{baseUrl}/api/projects/{p.Id}/summary",
+            score = new { p.Score.Resilience, p.Score.ResilienceGrade, p.Score.Security, p.Score.SecurityGrade },
+            openBySeverity = p.Score.OpenBySeverity.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+            openFindings = p.Findings.Count(f => f.Status == FindingStatus.Open),
+            openVulnerabilities = p.Findings.Count(f => f.Status == FindingStatus.Open && f.Category == FindingCategory.Vulnerability),
+            aiReview = p.Analysis is not null,
+            // False when no architecture model could be built (e.g. no AI provider): scores then reflect CVEs only.
+            architectureAnalysed = p.Model.Components.Count > 0,
+            lastLog = p.Log.LastOrDefault()?.Message,
+        };
     }
 }

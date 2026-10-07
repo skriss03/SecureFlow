@@ -17,12 +17,28 @@ web/.vite/
 **/data/cache/
 **/data/groups.json
 
+# Client build output (scripts/publish-clients.ps1) and wrapper builds
+artifacts/
+clients/maven-plugin/target/
+clients/gradle-plugin/build/
+clients/gradle-plugin/.gradle/
+clients/npm/*.tgz
+clients/python/build/
+clients/python/*.egg-info/
+samples/consumers/*/target/
+samples/consumers/*/build/
+samples/consumers/*/.gradle/
+samples/consumers/*/secureflow-report.md
+
 # Local run logs
 *.log
 
 # Secrets
 .env
 .env.*
+# ...except the deliberately flawed sample apps, whose committed secrets are what SecureFlow should find.
+!samples/consumers/**/.env
+!samples/consumers/**/.env.*
 appsettings.Development.json
 appsettings.Local.json
 *.pfx

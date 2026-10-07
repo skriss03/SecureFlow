@@ -22,6 +22,16 @@ public sealed class Project
     public string? AiProvider { get; set; }
     /// <summary>Team grouping for the Group Manager dashboard. Null = ungrouped.</summary>
     public string? GroupId { get; set; }
+    /// <summary>
+    /// Stable identity for repeat scans of the same codebase (e.g. "orders-service@main"), sent by the CLI
+    /// and build plugins. A new scan with a known key updates that project instead of creating another.
+    /// </summary>
+    public string? Key { get; set; }
+    /// <summary>Branch and commit of the most recent scan, when the source was a repository.</summary>
+    public string? Branch { get; set; }
+    public string? Commit { get; set; }
+    /// <summary>How many times this project has been scanned (1 for a one-off).</summary>
+    public int ScanCount { get; set; } = 1;
 
     public ArchitectureModel Model { get; set; } = new();
     public List<Finding> Findings { get; set; } = new();

@@ -124,7 +124,7 @@ public sealed class FoundryArchitectureAi : IArchitectureAi
         }
         catch (AnthropicUnauthorizedException ex)
         {
-            throw new AiUnavailableException($"Foundry rejected the API key: {ex.Message}");
+            throw new AiUnavailableException($"Foundry rejected the API key. {_options.AnthropicKeyHint("foundry") ?? "Check the key is current and was copied without spaces."} ({ex.Message})");
         }
         catch (Anthropic5xxException ex)
         {

@@ -19,42 +19,49 @@ namespace SecureFlow.Ingest;
 public sealed class DependencyScanner
 {
     private readonly HttpClient _http;
+    private readonly DependencyScanOptions _options;
 
-    /// <summary>Hard cap so a pathological monorepo manifest can't blow up one batch query.</summary>
-    public int MaxPackages { get; init; } = 300;
-
-    public DependencyScanner(HttpClient http)
+    public DependencyScanner(HttpClient http, DependencyScanOptions options)
     {
         _http = http;
-        _http.BaseAddress = new Uri("https://api.osv.dev/");
+        _options = options;
+        _http.BaseAddress = new Uri(options.OsvBaseUrl.EndsWith('/') ? options.OsvBaseUrl : options.OsvBaseUrl + "/");
+        _http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SecureFlow", "1.0"));
     }
+
+    public bool Enabled => _options.Enabled;
 
     private sealed record Dep(string Ecosystem, string Name, string Version, string ManifestPath);
 
     public async Task<List<Finding>> ScanAsync(RepoDigest digest, IProgress<string>? progress, CancellationToken ct)
     {
         var deps = ExtractDependencies(digest);
+        if (_options.Ecosystems.Length > 0)
+            deps = deps.Where(d => _options.Ecosystems.Contains(d.Ecosystem, StringComparer.OrdinalIgnoreCase)).ToList();
         if (deps.Count == 0)
         {
-            progress?.Report("No recognizable dependency manifest (package.json, *.csproj, requirements.txt, go.mod) in the digest.");
+            progress?.Report("No pinned dependencies found in manifests or lockfiles (pom.xml, build.gradle, package.json/lockfiles, *.csproj, requirements.txt, poetry.lock, go.mod...).");
             return new List<Finding>();
         }
-        if (deps.Count > MaxPackages)
+        if (deps.Count > _options.MaxPackages)
         {
-            progress?.Report($"{deps.Count} dependencies found; checking the first {MaxPackages}.");
-            deps = deps.Take(MaxPackages).ToList();
+            progress?.Report($"{deps.Count} dependencies found; checking the first {_options.MaxPackages} (DependencyScan:MaxPackages).");
+            deps = deps.Take(_options.MaxPackages).ToList();
         }
 
-        progress?.Report($"Checking {deps.Count} dependencies against OSV.dev...");
-        var hits = await QueryBatchAsync(deps, ct);
+        progress?.Report($"Checking {deps.Count} dependencies ({string.Join(", ", deps.GroupBy(d => d.Ecosystem).Select(g => $"{g.Key} {g.Count()}"))}) against OSV...");
+        var hits = new List<(Dep, string)>();
+        foreach (var batch in deps.Chunk(Math.Clamp(_options.BatchSize, 1, 1000)))
+            hits.AddRange(await QueryBatchAsync(batch.ToList(), ct));
         if (hits.Count == 0) { progress?.Report("No known vulnerabilities found."); return new List<Finding>(); }
 
         progress?.Report($"{hits.Count} advisory match(es); fetching details...");
         var findings = new List<Finding>();
+        var details = new Dictionary<string, VulnDetail?>();
         foreach (var (dep, vulnId) in hits)
         {
-            var detail = await FetchVulnAsync(vulnId, ct);
+            if (!details.TryGetValue(vulnId, out var detail)) details[vulnId] = detail = await FetchVulnAsync(vulnId, ct);
             if (detail is not null) findings.Add(ToFinding(dep, detail));
         }
 
@@ -70,92 +77,16 @@ public sealed class DependencyScanner
         }).ToList();
     }
 
-    // ---------- manifest parsing (text already in the digest, nothing re-fetched) ----------
+    // ---------- dependencies (resolved when the digest was built; re-parsed for older digests) ----------
 
     private static List<Dep> ExtractDependencies(RepoDigest digest)
     {
-        var deps = new List<Dep>();
-        foreach (var file in digest.Files)
-        {
-            var name = System.IO.Path.GetFileName(file.Path);
-            try
-            {
-                if (name.Equals("package.json", StringComparison.OrdinalIgnoreCase))
-                    deps.AddRange(ParsePackageJson(file));
-                else if (name.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-                    deps.AddRange(ParseCsproj(file));
-                else if (name.Equals("requirements.txt", StringComparison.OrdinalIgnoreCase))
-                    deps.AddRange(ParseRequirementsTxt(file));
-                else if (name.Equals("go.mod", StringComparison.OrdinalIgnoreCase))
-                    deps.AddRange(ParseGoMod(file));
-            }
-            catch
-            {
-                // A malformed manifest shouldn't fail the whole scan; just skip it.
-            }
-        }
-        // Same package can appear in multiple manifests (workspaces, multi-project repos); keep one.
-        return deps.GroupBy(d => (d.Ecosystem, d.Name, d.Version)).Select(g => g.First()).ToList();
-    }
-
-    private static List<Dep> ParsePackageJson(RepoFile file)
-    {
-        var result = new List<Dep>();
-        using var doc = JsonDocument.Parse(file.Content);
-        foreach (var section in new[] { "dependencies", "devDependencies" })
-        {
-            if (!doc.RootElement.TryGetProperty(section, out var deps) || deps.ValueKind != JsonValueKind.Object) continue;
-            foreach (var prop in deps.EnumerateObject())
-            {
-                var version = CleanNpmVersion(prop.Value.GetString() ?? "");
-                if (version is not null) result.Add(new Dep("npm", prop.Name, version, file.Path));
-            }
-        }
-        return result;
-    }
-
-    private static string? CleanNpmVersion(string raw)
-    {
-        raw = raw.Trim();
-        // Skip ranges/tags/git/workspace refs we can't resolve to one concrete version.
-        if (raw.Length == 0 || raw is "*" or "latest" || raw.Contains(' ') || raw.Contains("||")
-            || raw.StartsWith("git") || raw.StartsWith("file:") || raw.StartsWith("workspace:") || raw.StartsWith("link:"))
-            return null;
-        raw = raw.TrimStart('^', '~', '>', '<', '=').Trim();
-        return Regex.IsMatch(raw, @"^\d+(\.\d+){1,3}") ? raw : null;
-    }
-
-    private static List<Dep> ParseCsproj(RepoFile file)
-    {
-        var result = new List<Dep>();
-        foreach (Match m in Regex.Matches(file.Content,
-            @"<PackageReference\s+[^>]*Include\s*=\s*""([^""]+)""[^>]*Version\s*=\s*""([^""]+)""|<PackageReference\s+[^>]*Version\s*=\s*""([^""]+)""[^>]*Include\s*=\s*""([^""]+)"""))
-        {
-            var name = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[4].Value;
-            var version = m.Groups[1].Success ? m.Groups[2].Value : m.Groups[3].Value;
-            if (Regex.IsMatch(version, @"^\d+(\.\d+){1,3}")) result.Add(new Dep("NuGet", name, version, file.Path));
-        }
-        return result;
-    }
-
-    private static List<Dep> ParseRequirementsTxt(RepoFile file)
-    {
-        var result = new List<Dep>();
-        foreach (var rawLine in file.Content.Split('\n'))
-        {
-            var line = rawLine.Split('#')[0].Trim();
-            var m = Regex.Match(line, @"^([A-Za-z0-9_.-]+)\s*==\s*([0-9][0-9A-Za-z.+-]*)$");
-            if (m.Success) result.Add(new Dep("PyPI", m.Groups[1].Value, m.Groups[2].Value, file.Path));
-        }
-        return result;
-    }
-
-    private static List<Dep> ParseGoMod(RepoFile file)
-    {
-        var result = new List<Dep>();
-        foreach (Match m in Regex.Matches(file.Content, @"^\s*([a-zA-Z0-9._/-]+)\s+(v[0-9][0-9A-Za-z.+-]*)\s*(?://.*)?$", RegexOptions.Multiline))
-            result.Add(new Dep("Go", m.Groups[1].Value, m.Groups[2].Value, file.Path));
-        return result;
+        // Digests built by this version carry a resolved list (including lockfiles). Older stored digests
+        // don't, so fall back to parsing whatever manifests made it into the file content.
+        var refs = digest.Dependencies.Count > 0
+            ? digest.Dependencies
+            : ManifestParser.Distinct(digest.Files.Where(f => ManifestParser.IsManifest(f.Path)).SelectMany(f => ManifestParser.Parse(f.Path, f.Content)));
+        return refs.Select(d => new Dep(d.Ecosystem, d.Name, d.Version, d.ManifestPath)).ToList();
     }
 
     // ---------- OSV.dev ----------
@@ -211,7 +142,7 @@ public sealed class DependencyScanner
 
     // ---------- mapping to a Finding ----------
 
-    private static Finding ToFinding(Dep dep, VulnDetail v)
+    private Finding ToFinding(Dep dep, VulnDetail v)
     {
         var cve = v.Aliases.FirstOrDefault(a => a.StartsWith("CVE-"));
         var ruleId = cve ?? v.Id;
@@ -229,7 +160,7 @@ public sealed class DependencyScanner
             Title = $"{dep.Name}@{dep.Version}: {(string.IsNullOrWhiteSpace(v.Summary) ? ruleId : v.Summary)}",
             Description = string.IsNullOrWhiteSpace(v.Details) ? v.Summary : Truncate(v.Details, 900),
             Rationale = $"Published advisory {v.Id}{(cve is not null && cve != v.Id ? $" ({cve})" : "")} affects {dep.Name} {dep.Version}, referenced in {dep.ManifestPath}."
-                + (v.Severity is null ? " Severity was not published by the advisory; shown as Medium." : ""),
+                + (v.Severity is null ? $" Severity was not published by the advisory; shown as {Unrated}." : ""),
             Mitigation = v.FixedVersion is not null
                 ? $"Upgrade {dep.Name} to {v.FixedVersion} or later."
                 : $"Upgrade {dep.Name} past the vulnerable range; check {v.Id} for the fixed version.",
@@ -242,13 +173,15 @@ public sealed class DependencyScanner
         };
     }
 
-    private static Severity MapSeverity(string? osv) => osv?.ToUpperInvariant() switch
+    private Severity Unrated => Enum.TryParse<Severity>(_options.UnratedSeverity, true, out var s) ? s : Core.Model.Severity.Medium;
+
+    private Severity MapSeverity(string? osv) => osv?.ToUpperInvariant() switch
     {
         "CRITICAL" => Core.Model.Severity.Critical,
         "HIGH" => Core.Model.Severity.High,
         "MODERATE" => Core.Model.Severity.Medium,
         "LOW" => Core.Model.Severity.Low,
-        _ => Core.Model.Severity.Medium,
+        _ => Unrated,
     };
 
     private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n] + "…";

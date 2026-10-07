@@ -30,7 +30,28 @@ public sealed class AiOptions
     /// <summary>When true, never call a provider; serve from cache or fail. Also set by SECUREFLOW_AI_OFFLINE=1.</summary>
     public bool OfflineOnly { get; set; } = false;
 
-    public string ResolvedAnthropicKey => AnthropicApiKey ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? "";
-    public string ResolvedOpenAiKey => OpenAiApiKey ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "";
+    // Trimmed because a key pasted into a terminal or secrets file often carries a stray space or newline,
+    // which providers reject as an invalid key. Quotes are stripped for the same reason.
+    public string ResolvedAnthropicKey => Clean(AnthropicApiKey ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"));
+    public string ResolvedOpenAiKey => Clean(OpenAiApiKey ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY"));
+
+    private static string Clean(string? key) => (key ?? "").Trim().Trim('"', '\'').Trim();
+
+    /// <summary>
+    /// Explains the usual reason a key is rejected, from its shape alone (never logs the key). Anthropic's own API
+    /// keys start with "sk-ant-"; keys from Microsoft Foundry and other gateways do not, and need Ai:Provider=foundry.
+    /// </summary>
+    public string? AnthropicKeyHint(string provider)
+    {
+        var key = ResolvedAnthropicKey;
+        if (key.Length == 0) return null;
+        if (provider.Equals("anthropic", StringComparison.OrdinalIgnoreCase) && !key.StartsWith("sk-ant-", StringComparison.Ordinal))
+            return $"The configured key ({key.Length} characters) does not start with 'sk-ant-', so it is not an Anthropic API key. " +
+                   "If it came from Microsoft Foundry, set Ai:Provider=foundry plus Ai:FoundryResourceName and Ai:FoundryDeploymentName; " +
+                   "otherwise create a key at console.anthropic.com.";
+        if (provider.Equals("foundry", StringComparison.OrdinalIgnoreCase) && key.StartsWith("sk-ant-", StringComparison.Ordinal))
+            return "The configured key looks like an Anthropic API key (sk-ant-...), but Ai:Provider is 'foundry'. Use Ai:Provider=anthropic.";
+        return null;
+    }
     public bool ResolvedOffline => OfflineOnly || Environment.GetEnvironmentVariable("SECUREFLOW_AI_OFFLINE") is "1" or "true";
 }

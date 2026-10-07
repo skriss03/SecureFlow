@@ -1,7 +1,9 @@
 using SecureFlow.Ai;
+using SecureFlow.Api.Options;
 using SecureFlow.Core.Model;
 using SecureFlow.Core.Rules;
 using SecureFlow.Core.Scoring;
+using SecureFlow.Ingest;
 
 namespace SecureFlow.Api.Projects;
 
@@ -23,15 +25,38 @@ public sealed class ProjectPipeline
     private readonly ProjectStore _store;
     private readonly AiRegistry _ai;
     private readonly ILogger<ProjectPipeline> _log;
+    private readonly DependencyScanner? _deps;
+    private readonly SecureFlowOptions _options;
 
-    public ProjectPipeline(ProjectStore store, AiRegistry ai, ILogger<ProjectPipeline> log)
+    public ProjectPipeline(ProjectStore store, AiRegistry ai, ILogger<ProjectPipeline> log, DependencyScanner? deps = null, SecureFlowOptions? options = null)
     {
         _store = store;
         _ai = ai;
         _log = log;
+        _deps = deps;
+        _options = options ?? new SecureFlowOptions();
     }
 
     public delegate Task<ArchitectureModel> Extractor(IProgress<string> progress, CancellationToken ct);
+
+    /// <summary>
+    /// Runs a repeat scan on an existing project in the background: same id, so the report URL a developer
+    /// bookmarked stays valid, History gains a point, and Accepted/Fixed statuses carry over. Open AI
+    /// findings are dropped because the new AI review regenerates them from the new model.
+    /// </summary>
+    public Project Rescan(Project project, Extractor extractor)
+    {
+        project.ScanCount++;
+        project.Error = null;
+        project.Status = ProjectStatus.Queued;
+        project.Proposals = new Dictionary<string, FixProposal>();
+        project.Findings = project.Findings.Where(f => !(f.Source == FindingSource.Ai && f.Status == FindingStatus.Open)).ToList();
+        project.AiProvider = _ai.Name;
+        project.AddLog($"Re-scan #{project.ScanCount} requested.");
+        _store.Save(project);
+        _ = Task.Run(() => RunAsync(project, extractor, CancellationToken.None));
+        return project;
+    }
 
     /// <summary>Queues the project and runs the pipeline in the background. The caller returns the id and the UI follows the SSE log.</summary>
     public Project Start(Project project, Extractor extractor)
@@ -56,9 +81,20 @@ public sealed class ProjectPipeline
             p.AddLog($"Model ready: {p.Model.Components.Count} components, {p.Model.Flows.Count} flows, {p.Model.TrustBoundaries.Count} trust boundaries, {p.Model.Assumptions.Count} assumptions.");
 
             p.Status = ProjectStatus.Analyzing;
-            Analyze(p, "Initial analysis");
-            p.AddLog($"Rules: {p.Findings.Count} findings. Resilience {p.Score.Resilience} ({p.Score.ResilienceGrade}), Security {p.Score.Security} ({p.Score.SecurityGrade}).");
+            Analyze(p, p.ScanCount > 1 ? $"Re-scan #{p.ScanCount}" : "Initial analysis");
+            p.AddLog($"Rules: {p.Findings.Count(f => f.Category != FindingCategory.Vulnerability)} findings. Resilience {p.Score.Resilience} ({p.Score.ResilienceGrade}), Security {p.Score.Security} ({p.Score.SecurityGrade}).");
             _store.Save(p);
+
+            if (_options.Scan.AutoDependencyScan && _deps is { Enabled: true } && p.Digest is not null)
+            {
+                try { await ScanDependenciesAsync(p, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // CVE lookup is a network call to OSV; its failure must not fail the architecture scan.
+                    _log.LogWarning(ex, "Dependency scan failed for {Id}", p.Id);
+                    p.AddLog("Vulnerability scan skipped: " + ex.Message, "warn");
+                }
+            }
 
             await ReviewAsync(p, progress, ct);
 
@@ -78,6 +114,33 @@ public sealed class ProjectPipeline
         }
     }
 
+    /// <summary>
+    /// CVE scan of the digest's dependencies. Replaces earlier vulnerability findings, keeping the
+    /// Fixed/Accepted status of advisories that are still present, same as rule findings.
+    /// </summary>
+    public async Task<int> ScanDependenciesAsync(Project p, CancellationToken ct)
+    {
+        if (_deps is null) throw new InvalidOperationException("Dependency scanning is not configured.");
+        if (p.Digest is null) throw new InvalidOperationException("No dependency manifest available. Vulnerability scanning needs a repo scan (image/draw.io/sample projects have no package manifests to check).");
+
+        var fresh = await _deps.ScanAsync(p.Digest, new LogProgress(p), ct);
+        var previous = p.Findings.Where(f => f.Category == FindingCategory.Vulnerability)
+            .GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
+        foreach (var f in fresh)
+            if (previous.TryGetValue(f.Id, out var old) && old.Status != FindingStatus.Open)
+                f.Status = old.Status;
+
+        p.Findings = p.Findings.Where(f => f.Category != FindingCategory.Vulnerability)
+            .Concat(fresh)
+            .OrderBy(f => f.Status).ThenByDescending(f => f.Severity).ThenByDescending(f => f.Confidence).ToList();
+        p.Score = Scorer.Score(p.Findings);
+        var open = fresh.Count(f => f.Status == FindingStatus.Open);
+        p.Snapshot($"Vulnerability scan: {open} open");
+        p.AddLog($"Vulnerability scan: {fresh.Count} advisory match(es) against dependency manifests.");
+        _store.Save(p);
+        return fresh.Count;
+    }
+
     /// <summary>Deterministic part: rules + score. Preserves statuses of findings that still exist and keeps fixed ones for history.</summary>
     public void Analyze(Project p, string action)
     {
@@ -90,15 +153,17 @@ public sealed class ProjectPipeline
 
         var freshIds = fresh.Select(f => f.Id).ToHashSet();
         var aiFindings = p.Findings.Where(f => f.Source == FindingSource.Ai).ToList();
+        // CVE findings come from the dependency scan, not the rule catalog; the rules must not retire them.
+        var vulnerabilities = p.Findings.Where(f => f.Category == FindingCategory.Vulnerability).ToList();
 
         // Rule findings whose rule no longer fires are retired, each exactly once. This is evaluated
         // eagerly on purpose: marking Status inside a lazy Select would make a second lazy Where
         // match the very items the first one just changed, yielding them twice.
-        var retired = p.Findings.Where(f => f.Source == FindingSource.Rule && !freshIds.Contains(f.Id)).ToList();
+        var retired = p.Findings.Where(f => f.Source == FindingSource.Rule && f.Category != FindingCategory.Vulnerability && !freshIds.Contains(f.Id)).ToList();
         foreach (var f in retired)
             f.Status = FindingStatus.Fixed;
 
-        p.Findings = fresh.Concat(aiFindings).Concat(retired)
+        p.Findings = fresh.Concat(aiFindings).Concat(vulnerabilities).Concat(retired)
             .OrderBy(f => f.Status).ThenByDescending(f => f.Severity).ThenByDescending(f => f.Confidence).ToList();
         p.Score = Scorer.Score(p.Findings);
         p.Snapshot(action);

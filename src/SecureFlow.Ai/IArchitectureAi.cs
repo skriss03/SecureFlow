@@ -33,6 +33,21 @@ public sealed class RepoDigest
     public int TotalFilesInRepo { get; set; }
     public long IncludedBytes { get; set; }
     public List<string> SkippedNotes { get; set; } = new();
+    /// <summary>
+    /// Dependencies resolved from manifests and lockfiles where the digest was built (on the server, or
+    /// on a developer's machine by the CLI). Lockfiles are too large to ship as file content, so only
+    /// this list travels. Not sent to the AI; used for CVE scanning.
+    /// </summary>
+    public List<DependencyRef> Dependencies { get; set; } = new();
+}
+
+public sealed class DependencyRef
+{
+    /// <summary>OSV ecosystem name: npm, NuGet, PyPI, Go, Maven.</summary>
+    public string Ecosystem { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Version { get; set; } = "";
+    public string ManifestPath { get; set; } = "";
 }
 
 public sealed class RepoFile

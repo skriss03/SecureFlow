@@ -117,7 +117,7 @@ public sealed class AnthropicArchitectureAi : IArchitectureAi
         }
         catch (AnthropicUnauthorizedException ex)
         {
-            throw new AiUnavailableException($"Anthropic rejected the API key: {ex.Message}");
+            throw new AiUnavailableException($"Anthropic rejected the API key. {_options.AnthropicKeyHint("anthropic") ?? "Check the key is current and was copied without spaces."} ({ex.Message})");
         }
         catch (Anthropic5xxException ex)
         {

@@ -3,6 +3,17 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>SecureFlow.Cli</RootNamespace>
     <AssemblyName>secureflow</AssemblyName>
+    <Version>0.1.0</Version>
+
+    <!-- dotnet tool: `dotnet tool install -g SecureFlow.Cli` then `secureflow scan` -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>secureflow</ToolCommandName>
+    <PackageId>SecureFlow.Cli</PackageId>
+    <Description>SecureFlow client: scan a repository on this machine and get a resilience and threat-model report URL.</Description>
+
+    <!-- Native single-file, self-contained binaries for non-.NET developers are produced by
+         scripts/publish-clients.ps1 (dotnet publish with PublishSingleFile per runtime id). -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SecureFlow.Core/SecureFlow.Core.csproj" />

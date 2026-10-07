@@ -1,0 +1,12 @@
+**/bin
+**/obj
+**/node_modules
+**/data
+artifacts
+clients
+tests
+samples/consumers
+samples/demo-repo
+.git
+.vs
+*.pptx

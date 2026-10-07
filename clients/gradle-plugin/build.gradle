@@ -1,0 +1,53 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+
+// Coordinates are placeholders: change the group (and plugin id below) to your organisation's before
+// publishing to Artifactory.
+group = 'io.secureflow'
+version = '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+}
+
+gradlePlugin {
+    plugins {
+        secureflow {
+            id = 'io.secureflow'
+            implementationClass = 'io.secureflow.gradle.SecureFlowPlugin'
+            displayName = 'SecureFlow'
+            description = 'Runs `secureflow scan` on the project and prints the SecureFlow report URL.'
+        }
+    }
+}
+
+// Bakes the plugin version into the jar so it downloads the matching CLI by default.
+processResources {
+    inputs.property('version', project.version)
+    filesMatching('**/secureflow-client.properties') {
+        expand(version: project.version)
+    }
+}
+
+// Local test: `gradle publishToMavenLocal` (consumers add mavenLocal() to pluginManagement.repositories).
+// Artifactory: `gradle publish -Psecureflow.publishUrl=https://... -Psecureflow.publishUser=... -Psecureflow.publishPassword=...`
+publishing {
+    repositories {
+        if (project.hasProperty('secureflow.publishUrl')) {
+            maven {
+                name = 'artifactory'
+                url = project.property('secureflow.publishUrl')
+                credentials {
+                    username = project.findProperty('secureflow.publishUser') ?: System.getenv('SECUREFLOW_PUBLISH_USER')
+                    password = project.findProperty('secureflow.publishPassword') ?: System.getenv('SECUREFLOW_PUBLISH_PASSWORD')
+                }
+            }
+        }
+    }
+}

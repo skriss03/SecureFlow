@@ -1,0 +1,26 @@
+# Non-secret server settings. Every key is an ASP.NET Core setting written as an environment variable
+# (section__key); see src/SecureFlow.Api/appsettings.json for the full list and defaults.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secureflow-config
+  labels: { app: secureflow }
+data:
+  # Report links handed to developers. Set to the Route host below.
+  SecureFlow__PublicBaseUrl: "https://secureflow.apps.example.com"
+  SecureFlow__Auth__Enabled: "true"
+  SecureFlow__Auth__ProtectReads: "false"
+  SecureFlow__Retention__Enabled: "true"
+  SecureFlow__Retention__Days: "30"
+  SecureFlow__Retention__SweepIntervalMinutes: "60"
+  SecureFlow__Upload__MaxDigestBytes: "10485760"
+  SecureFlow__Scan__AutoDependencyScan: "true"
+  SecureFlow__Scan__ReuseProjectByKey: "true"
+  SecureFlow__Scan__AllowWithoutAi: "true"
+  # anthropic | openai | foundry; the matching key lives in the Secret.
+  Ai__Provider: "anthropic"
+  Ai__CacheEnabled: "true"
+  # Use an internal OSV mirror/proxy if the cluster cannot reach osv.dev.
+  DependencyScan__OsvBaseUrl: "https://api.osv.dev/"
+  DependencyScan__TimeoutSeconds: "60"
+  Cors__Origins__0: "https://secureflow.apps.example.com"

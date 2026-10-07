@@ -13,5 +13,6 @@
     <ProjectReference Include="../../src/SecureFlow.Ingest/SecureFlow.Ingest.csproj" />
     <ProjectReference Include="../../src/SecureFlow.Ai/SecureFlow.Ai.csproj" />
     <ProjectReference Include="../../src/SecureFlow.Api/SecureFlow.Api.csproj" />
+    <ProjectReference Include="../../src/SecureFlow.Cli/SecureFlow.Cli.csproj" />
   </ItemGroup>
 </Project>

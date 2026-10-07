@@ -1,0 +1,20 @@
+{
+  "name": "@secureflow/cli",
+  "version": "0.1.0",
+  "description": "SecureFlow client for Node, Angular and React projects: scan the repo and get the SecureFlow report URL.",
+  "bin": {
+    "secureflow": "bin/secureflow.js"
+  },
+  "files": [
+    "bin/",
+    "vendor/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

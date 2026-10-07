@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secureflow-cli"
+version = "0.1.0"
+description = "SecureFlow client for Python, Django and FastAPI projects: scan the repo and get the SecureFlow report URL."
+requires-python = ">=3.8"
+license = { text = "UNLICENSED" }
+
+[project.scripts]
+secureflow = "secureflow_cli:main"
+
+[tool.setuptools]
+packages = ["secureflow_cli"]

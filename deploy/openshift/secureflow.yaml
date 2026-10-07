@@ -1,0 +1,79 @@
+# SecureFlow on OpenShift: one replica (projects are stored as files on the PVC), a Service and a TLS Route.
+# Apply with:  oc apply -f deploy/openshift/configmap.yaml -f deploy/openshift/secureflow.yaml
+# after creating the secret (see secret.example.yaml). Replace the image and host for your cluster.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: secureflow-data
+  labels: { app: secureflow }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow
+  labels: { app: secureflow }
+spec:
+  # File-backed project store: keep a single writer. Recreate avoids two pods on one RWO volume.
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: secureflow }
+  template:
+    metadata:
+      labels: { app: secureflow }
+    spec:
+      containers:
+        - name: secureflow
+          image: artifactory.example.com/docker-local/secureflow:0.1.0
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: secureflow-config }
+            - secretRef: { name: secureflow-secrets }
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/health, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: secureflow-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secureflow
+  labels: { app: secureflow }
+spec:
+  selector: { app: secureflow }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: secureflow
+  labels: { app: secureflow }
+spec:
+  host: secureflow.apps.example.com
+  to: { kind: Service, name: secureflow }
+  port: { targetPort: 8080 }
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

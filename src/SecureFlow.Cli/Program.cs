@@ -5,6 +5,8 @@ using SecureFlow.Core.Samples;
 using SecureFlow.Core.Scoring;
 using SecureFlow.Core.Simulation;
 
+// secureflow scan [--path .] [--server url] [--token t] [--fail-on high]   (upload to a SecureFlow server, print the report URL)
+// secureflow config [--path .]                                             (show resolved client settings and where each came from)
 // secureflow analyze --sample shopfast|healthy
 // secureflow analyze --model path/to/model.json [--json] [--fail-on high]
 // secureflow simulate --sample shopfast --kill orders-db
@@ -37,6 +39,16 @@ ArchitectureModel LoadModel()
 
 switch (args_[0])
 {
+    case "--version" or "version":
+        Console.WriteLine($"secureflow {SecureFlow.Cli.ScanCommand.Version} ({Environment.ProcessPath})");
+        return 0;
+
+    case "scan":
+        return await SecureFlow.Cli.ScanCommand.RunAsync(args_);
+
+    case "config":
+        return SecureFlow.Cli.ScanCommand.PrintConfig(args_);
+
     case "rules":
         foreach (var r in RuleCatalog.Describe())
             Console.WriteLine($"{r.Id}  {r.Category,-10} {r.DefaultSeverity,-8} {r.Tag,-24} {r.Title}");
@@ -124,6 +136,15 @@ switch (args_[0])
 static void Usage()
 {
     Console.WriteLine("""
+        Usage: run inside your project folder (any stack: Java, .NET, Python, Angular, React, Node, Go...)
+
+        secureflow scan     [--path .] [--server URL] [--token T] [--group G] [--project-key K] [--name N]
+                            [--fail-on none|low|medium|high|critical] [--no-wait] [--timeout-seconds S]
+                            [--out report.md] [--open] [--json] [--dry-run] [--save-digest file.json] [--no-redact]
+                            Builds the repo digest on this machine (secrets redacted), uploads it to a SecureFlow
+                            server, waits for the analysis and prints the report URL. Exit 2 = --fail-on reached.
+        secureflow --version             Show the installed version and where it is installed
+        secureflow config   [--path .]   Show resolved settings: --flag > SECUREFLOW_* env > .secureflow.yml > ~/.secureflow/config.yml > default
         secureflow analyze  [--sample shopfast|healthy | --model model.json] [--json] [--weights] [--fail-on critical|high|medium]
         secureflow simulate [--sample ... | --model ...] --kill <componentId>
         secureflow rules

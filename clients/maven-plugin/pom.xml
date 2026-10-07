@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- Coordinates are placeholders: change groupId to your organisation's before publishing to Artifactory. -->
+  <groupId>io.secureflow</groupId>
+  <artifactId>secureflow-maven-plugin</artifactId>
+  <version>0.1.0</version>
+  <packaging>maven-plugin</packaging>
+  <name>SecureFlow Maven Plugin</name>
+  <description>Runs `secureflow scan` on the project and prints the SecureFlow report URL.</description>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.api.version>3.9.9</maven.api.version>
+    <plugin.tools.version>3.15.1</plugin.tools.version>
+  </properties>
+
+  <!-- Publish to Artifactory without editing this file:
+       mvn deploy -DaltDeploymentRepository=artifactory::https://artifactory.example.com/artifactory/libs-release-local
+       (credentials for server id "artifactory" come from ~/.m2/settings.xml). -->
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>${maven.api.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.plugin-tools</groupId>
+      <artifactId>maven-plugin-annotations</artifactId>
+      <version>${plugin.tools.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-plugin-plugin</artifactId>
+        <version>${plugin.tools.version}</version>
+        <configuration>
+          <goalPrefix>secureflow</goalPrefix>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+      </plugin>
+    </plugins>
+    <resources>
+      <!-- Bakes the plugin version into the jar so it downloads the matching CLI by default. -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </build>
+</project>

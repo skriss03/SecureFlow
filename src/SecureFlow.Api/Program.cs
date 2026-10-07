@@ -102,9 +102,19 @@ app.Logger.LogInformation("Report links use {Base}. Auth {Auth}. Retention {Rete
 var wwwroot = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 if (File.Exists(Path.Combine(wwwroot, "index.html")))
 {
+    // index.html must be re-checked on every visit, or browsers keep showing the previous UI after an update.
+    // The JS/CSS bundles have content hashes in their names, so they can stay cached.
+    var spaFiles = new StaticFileOptions
+    {
+        OnPrepareResponse = ctx =>
+        {
+            if (ctx.File.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                ctx.Context.Response.Headers.CacheControl = "no-cache";
+        },
+    };
     app.UseDefaultFiles();
-    app.UseStaticFiles();
-    app.MapFallbackToFile("index.html");
+    app.UseStaticFiles(spaFiles);
+    app.MapFallbackToFile("index.html", spaFiles);
 }
 else
 {

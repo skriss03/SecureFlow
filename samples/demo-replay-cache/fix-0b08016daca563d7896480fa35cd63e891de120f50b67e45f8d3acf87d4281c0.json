@@ -1,0 +1,130 @@
+{
+  "operation": "fix",
+  "provider": "claude-opus-5 (Microsoft Foundry)",
+  "createdAt": "2026-10-07T10:26:08.0556951+00:00",
+  "response": {
+    "findingId": "3a8f688e33",
+    "summary": "Move Payments DB to a zone-redundant, geo-replicated managed Azure SQL tier with backups, TDE and auditing, and make both SQL callers use bounded timeouts with transient-fault retries.",
+    "explanation": "Payments DB is modelled as a single SQL Server instance that both Payments API (f4) and Settlement Worker (f8) write to, so any host failure, patch or deploy takes the whole payment path down. The fix is to run it as Azure SQL Database Business Critical (or Premium) with zoneRedundant=true, which places the primary and at least two secondary replicas across separate availability zones behind a single listener, plus a failover group into a secondary region for DR. Enable point-in-time plus long-term retention backups, transparent data encryption and SQL auditing to Log Analytics at the same time \u2014 these are properties of the same resource and remove the related backup/encryption/audit findings. On the client side, dependents must tolerate the short (seconds-long) reconfiguration window during a zone failover: configure EnableRetryOnFailure with a bounded command timeout in both the .NET Payments API and the Settlement Worker so a failover degrades into a retry rather than an outage. Note this does not fix the fact that two services write the same schema (b2b57104ab/41fae851c4); that needs an ownership decision separately.",
+    "patch": {
+      "ops": [
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "replicas",
+          "value": 3,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "zones",
+          "value": 3,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "regions",
+          "value": 2,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "hasBackup",
+          "value": true,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "managed",
+          "value": true,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "encryptionAtRest",
+          "value": true,
+          "object": null
+        },
+        {
+          "kind": "set-component-prop",
+          "id": "payments-db",
+          "property": "auditLogging",
+          "value": true,
+          "object": null
+        },
+        {
+          "kind": "set-flow-prop",
+          "id": "f4",
+          "property": "timeoutMs",
+          "value": 3000,
+          "object": null
+        },
+        {
+          "kind": "set-flow-prop",
+          "id": "f4",
+          "property": "retries",
+          "value": 3,
+          "object": null
+        },
+        {
+          "kind": "set-flow-prop",
+          "id": "f8",
+          "property": "timeoutMs",
+          "value": 5000,
+          "object": null
+        },
+        {
+          "kind": "set-flow-prop",
+          "id": "f8",
+          "property": "retries",
+          "value": 3,
+          "object": null
+        }
+      ]
+    },
+    "codeChanges": [
+      {
+        "path": "infra/sql.bicep",
+        "language": "bicep",
+        "description": "Azure SQL Database as zone-redundant Business Critical with TDE, PITR \u002B long-term backup retention and auditing to Log Analytics.",
+        "snippet": "param location string = resourceGroup().location\nparam sqlServerName string = \u0027northbank-sql-primary\u0027\nparam logAnalyticsWorkspaceId string\n\nresource sqlServer \u0027Microsoft.Sql/servers@2023-05-01-preview\u0027 = {\n  name: sqlServerName\n  location: location\n  identity: { type: \u0027SystemAssigned\u0027 }\n  properties: {\n    minimalTlsVersion: \u00271.2\u0027\n    publicNetworkAccess: \u0027Disabled\u0027\n  }\n}\n\nresource paymentsDb \u0027Microsoft.Sql/servers/databases@2023-05-01-preview\u0027 = {\n  parent: sqlServer\n  name: \u0027payments\u0027\n  location: location\n  sku: {\n    name: \u0027BC_Gen5\u0027          // Business Critical: 3 extra replicas\n    tier: \u0027BusinessCritical\u0027\n    family: \u0027Gen5\u0027\n    capacity: 4\n  }\n  properties: {\n    zoneRedundant: true       // replicas spread across availability zones\n    requestedBackupStorageRedundancy: \u0027GeoZone\u0027\n    readScale: \u0027Enabled\u0027\n  }\n}\n\nresource tde \u0027Microsoft.Sql/servers/databases/transparentDataEncryption@2023-05-01-preview\u0027 = {\n  parent: paymentsDb\n  name: \u0027current\u0027\n  properties: { state: \u0027Enabled\u0027 }\n}\n\nresource shortTermBackup \u0027Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies@2023-05-01-preview\u0027 = {\n  parent: paymentsDb\n  name: \u0027default\u0027\n  properties: { retentionDays: 35, diffBackupIntervalInHours: 12 }\n}\n\nresource longTermBackup \u0027Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2023-05-01-preview\u0027 = {\n  parent: paymentsDb\n  name: \u0027default\u0027\n  properties: { weeklyRetention: \u0027P12W\u0027, monthlyRetention: \u0027P12M\u0027, yearlyRetention: \u0027P7Y\u0027, weekOfYear: 1 }\n}\n\nresource auditing \u0027Microsoft.Sql/servers/auditingSettings@2023-05-01-preview\u0027 = {\n  parent: sqlServer\n  name: \u0027default\u0027\n  properties: {\n    state: \u0027Enabled\u0027\n    isAzureMonitorTargetEnabled: true\n    auditActionsAndGroups: [\n      \u0027BATCH_COMPLETED_GROUP\u0027\n      \u0027SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP\u0027\n      \u0027FAILED_DATABASE_AUTHENTICATION_GROUP\u0027\n    ]\n  }\n}\n\nresource auditDiag \u0027Microsoft.Insights/diagnosticSettings@2021-05-01-preview\u0027 = {\n  scope: paymentsDb\n  name: \u0027sql-audit-to-law\u0027\n  properties: {\n    workspaceId: logAnalyticsWorkspaceId\n    logs: [ { category: \u0027SQLSecurityAuditEvents\u0027, enabled: true } ]\n  }\n}"
+      },
+      {
+        "path": "infra/sql-failover-group.bicep",
+        "language": "bicep",
+        "description": "Auto-failover group giving Payments DB a second region and a stable listener name for both callers (f4 and f8).",
+        "snippet": "param primaryServerId string\nparam secondaryServerId string\nparam paymentsDbId string\n\nresource failoverGroup \u0027Microsoft.Sql/servers/failoverGroups@2023-05-01-preview\u0027 = {\n  name: \u0027${last(split(primaryServerId, \u0027/\u0027))}/northbank-payments-fog\u0027\n  properties: {\n    readWriteEndpoint: {\n      failoverPolicy: \u0027Automatic\u0027\n      failoverWithDataLossGracePeriodMinutes: 60\n    }\n    partnerServers: [ { id: secondaryServerId } ]\n    databases: [ paymentsDbId ]\n  }\n}\n// Connection strings must use: northbank-payments-fog.database.windows.net"
+      },
+      {
+        "path": "src/Payments.Api/Program.cs",
+        "language": "csharp",
+        "description": "EF Core connection resiliency for f4: bounded command timeout plus transient-fault retries so a zone/region failover degrades into a retry.",
+        "snippet": "builder.Services.AddDbContextPool\u003CPaymentsDbContext\u003E(options =\u003E\n    options.UseSqlServer(\n        builder.Configuration.GetConnectionString(\u0022PaymentsDb\u0022),\n        sql =\u003E\n        {\n            sql.EnableRetryOnFailure(\n                maxRetryCount: 3,\n                maxRetryDelay: TimeSpan.FromSeconds(5),\n                errorNumbersToAdd: null);\n            sql.CommandTimeout(3); // seconds - matches f4 timeoutMs = 3000\n        }));\n\n// appsettings.json connection string (no secrets in code):\n// \u0022PaymentsDb\u0022: \u0022Server=tcp:northbank-payments-fog.database.windows.net,1433;Database=payments;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connect Timeout=5\u0022"
+      },
+      {
+        "path": "src/Settlement.Worker/Program.cs",
+        "language": "csharp",
+        "description": "Same resiliency settings for the Settlement Worker\u0027s SQL path (f8), with a slightly longer command timeout for batch settlement writes.",
+        "snippet": "builder.Services.AddDbContext\u003CSettlementDbContext\u003E(options =\u003E\n    options.UseSqlServer(\n        builder.Configuration.GetConnectionString(\u0022PaymentsDb\u0022),\n        sql =\u003E\n        {\n            sql.EnableRetryOnFailure(\n                maxRetryCount: 3,\n                maxRetryDelay: TimeSpan.FromSeconds(10));\n            sql.CommandTimeout(5); // seconds - matches f8 timeoutMs = 5000\n        }));"
+      }
+    ],
+    "resolvesFindingIds": [
+      "3a8f688e33",
+      "faf724c737",
+      "5be79dacd5",
+      "238da5b5e5",
+      "4957cf962d",
+      "a96474e930",
+      "5e9f84d908",
+      "f512f72fd7",
+      "7f239ec978",
+      "ffee890725"
+    ],
+    "residualRisk": "A zone or region failover still causes a brief (typically sub-30-second, and for geo-failover potentially data-losing) write outage, so in-flight payments depend on the callers\u0027 retry and idempotency behaviour. It does not address the shared-schema coupling between Payments API and Settlement Worker, the dual-write to the settlement queue, or logical corruption/bad-deploy scenarios, which require the outbox work and restore-drill testing tracked separately."
+  }
+}

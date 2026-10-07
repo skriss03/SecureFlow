@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecureFlow Local Walkthrough &amp; Offline Demo Plan</title>
+<style>
+  :root {
+    --bg:#f7f8fb; --surface:#fff; --ink:#1b2233; --muted:#5b6477; --line:#e2e6ef;
+    --accent:#3b5bdb; --accent-soft:#e8edff; --ok:#1f8a4c; --ok-soft:#e4f6ec;
+    --warn:#b36b00; --warn-soft:#fff3dd; --bad:#c0392b; --bad-soft:#fdeceb;
+    --code-bg:#0f1626; --code-ink:#e6ebff; --code-muted:#8d99b8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0e1320; --surface:#151c2e; --ink:#e6ebff; --muted:#9aa5c0; --line:#27314b;
+      --accent:#8fa6ff; --accent-soft:#1d2745; --ok:#55d08a; --ok-soft:#14301f;
+      --warn:#f2b45a; --warn-soft:#36290f; --bad:#ff8a7d; --bad-soft:#3a1a17;
+      --code-bg:#0a0f1c; --code-ink:#e6ebff; --code-muted:#7e8aa9;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  a { color:var(--accent); }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 16px; }
+  header.hero { background:linear-gradient(135deg,#243b9c,#3b5bdb 55%,#5f7cff); color:#fff; padding:36px 16px 28px; }
+  .hero h1 { margin:0 0 6px; font-size:1.9rem; }
+  .hero p { margin:4px 0; max-width:760px; opacity:.95; }
+  .hero .pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .hero .pill { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:5px 14px; font-size:.85rem; font-weight:600; }
+  .layout { display:grid; grid-template-columns:200px 1fr; gap:26px; padding:24px 0 60px; }
+  nav.toc { position:sticky; top:16px; align-self:start; font-size:.88rem; }
+  nav.toc strong { display:block; margin-bottom:6px; color:var(--muted); text-transform:uppercase; font-size:.7rem; letter-spacing:.06em; }
+  nav.toc a { display:block; padding:4px 7px; border-radius:6px; text-decoration:none; color:var(--ink); }
+  nav.toc a:hover { background:var(--accent-soft); }
+  main section { margin-bottom:34px; }
+  h2 { font-size:1.35rem; margin:0 0 12px; }
+  h3 { font-size:1.05rem; margin:18px 0 6px; }
+  p { margin:8px 0; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 20px; margin:12px 0; }
+  .note,.tip,.warn,.bad { border-radius:10px; padding:11px 14px; margin:12px 0; border-left:4px solid; font-size:.94rem; }
+  .note { background:var(--accent-soft); border-color:var(--accent); }
+  .tip { background:var(--ok-soft); border-color:var(--ok); }
+  .warn { background:var(--warn-soft); border-color:var(--warn); }
+  .bad { background:var(--bad-soft); border-color:var(--bad); }
+  pre { position:relative; margin:10px 0; padding:14px 16px; border-radius:10px; background:var(--code-bg); color:var(--code-ink);
+    overflow-x:auto; font:.85rem/1.55 ui-monospace,"Cascadia Code",Consolas,monospace; }
+  pre .c { color:var(--code-muted); }
+  code { font:.88em ui-monospace,Consolas,monospace; background:var(--accent-soft); padding:1px 6px; border-radius:5px; }
+  pre code { background:none; padding:0; font-size:inherit; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:.92rem; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  th,td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:var(--accent-soft); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  tr:last-child td { border-bottom:0; }
+
+  /* step cards */
+  .step { display:grid; grid-template-columns:320px 1fr; gap:18px; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; padding:16px; margin:16px 0; align-items:start; }
+  .step img { width:100%; border-radius:8px; border:1px solid var(--line); display:block; }
+  .step .n { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+    background:var(--accent); color:#fff; font-weight:700; font-size:.85rem; margin-right:8px; }
+  .step h3 { margin:0 0 6px; display:flex; align-items:center; }
+  .step .meta { font-size:.82rem; color:var(--muted); margin-bottom:6px; }
+  video.rec { width:100%; max-width:760px; border-radius:10px; border:1px solid var(--line); display:block; margin:12px 0; background:#000; }
+  @media (max-width:860px) { .layout{grid-template-columns:1fr;} nav.toc{position:static;} .step{grid-template-columns:1fr;} }
+  @media print { nav.toc{display:none;} body{background:#fff;color:#000;} }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>SecureFlow Local Walkthrough &amp; Offline Demo Plan</h1>
+    <p>A real, screen-captured run of SecureFlow on this machine, kept as a permanent record in the repository — plus a tested plan for demoing it again after this VM and its API keys are gone.</p>
+    <div class="pills"><span class="pill">11 screenshots</span><span class="pill">34s screen recording</span><span class="pill">Offline replay verified</span><span class="pill">No API key needed to replay</span></div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc">
+    <strong>Contents</strong>
+    <a href="#video">Screen recording</a>
+    <a href="#steps">Step-by-step walkthrough</a>
+    <a href="#future">Demoing after this VM is gone</a>
+    <a href="#recipe">The offline-replay recipe</a>
+    <a href="#why">Why this works</a>
+    <a href="#expand">Adding more scenarios</a>
+    <a href="#limits">What this doesn't solve</a>
+  </nav>
+
+  <main>
+
+    <section id="context">
+      <h2>What this is</h2>
+      <p>This was run on <strong>2026-10-07</strong>, on the <code>feature/tool-agnostic-diagram-import</code> branch, against the local server at <code>http://localhost:5180</code> with a real Microsoft Foundry (Claude) key configured on this VM. It uploads <code>samples/diagrams/northbank.vsdx</code> — a Visio file, read with no AI — through the full product: model, blast radius, findings with evidence, an AI-proposed fix, a live re-score, and the printable report.</p>
+      <div class="note">This page, the screenshots, the video and the replay-cache files it references are all committed to the git repository — the one place this environment is still allowed to send things. Once pushed, none of it depends on this VM, this VDI session, or any API key existing anywhere.</div>
+    </section>
+
+    <section id="video">
+      <h2>Screen recording</h2>
+      <p>A 34-second capture of the exact sequence below, recorded directly from the running app. It plays here, and it also plays natively if you open <code>docs/walkthrough/secureflow-walkthrough.webm</code> directly on GitHub — no SecureFlow server, no clone, no API key required to watch it.</p>
+      <video class="rec" controls preload="metadata">
+        <source src="walkthrough/secureflow-walkthrough.webm" type="video/webm">
+        Your browser can't play this inline — open <code>docs/walkthrough/secureflow-walkthrough.webm</code> directly instead.
+      </video>
+    </section>
+
+    <section id="steps">
+      <h2>Step-by-step walkthrough</h2>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/01-dashboard.png" alt="Group Manager Dashboard">
+        <div>
+          <h3><span class="n">1</span>Group Manager Dashboard</h3>
+          <div class="meta">Landing page · <code>/</code></div>
+          <p>The portfolio view: 69 projects already on this machine from earlier testing, rolled up by team, with average Resilience/Security and a count of open Critical findings across all of them. This is what a manager sees without opening any single project.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/02-projects-home.png" alt="Projects page with the three ingestion cards">
+        <div>
+          <h3><span class="n">2</span>Projects page</h3>
+          <div class="meta"><code>/projects</code></div>
+          <p>The three ways in: an image or whiteboard photo (AI), a git repository, and — the capability added on this branch — <strong>a diagram from any tool</strong>: draw.io, Mermaid, PlantUML, Structurizr, Visio, Excalidraw, Gliffy, or a PDF/SVG export, all through one button.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/04-model-overview.png" alt="Architecture model and executive summary for NorthBank Payments">
+        <div>
+          <h3><span class="n">3</span>Model, right after upload</h3>
+          <div class="meta"><code>northbank.vsdx</code> → Resilience 36 (F) · Security 74 (C)</div>
+          <p>A Visio file, parsed with no AI into components, flows and trust boundaries. The AI review on the right adds the executive summary and "most likely bad day" from the model — in this run it replayed from the cache (see below) rather than calling out, which is why it appeared almost instantly.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/05-component-detail.png" alt="Payments DB component detail panel">
+        <div>
+          <h3><span class="n">4</span>Component detail</h3>
+          <div class="meta">Clicked: Payments DB</div>
+          <p>Properties, the evidence line it was built from (<code>visio · Payments DB (SQL Server) x1</code>), and its 14 open findings — each with a one-click <strong>Fix</strong> button.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/06-blast-radius.png" alt="Blast radius simulation showing 3 components down">
+        <div>
+          <h3><span class="n">5</span>Blast radius</h3>
+          <div class="meta">Simulate failure of Payments DB</div>
+          <p>Deterministic graph propagation, no AI: losing Payments DB takes 3 components down and degrades 1 — a 63% blast radius, with the exact reason given for each ("calls Payments DB synchronously with no timeout and no circuit breaker").</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/07-findings-list.png" alt="Findings list, 42 open findings by severity">
+        <div>
+          <h3><span class="n">6</span>Findings list</h3>
+          <div class="meta">42 open · 2 Critical, 15 High, 17 Medium, 8 Low</div>
+          <p>Every finding is filterable by category and severity, and tagged <code>AI</code> when it came from the contextual review rather than a fixed rule.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/08-finding-detail.png" alt="Finding detail: Single point of failure, with evidence, why it matters, mitigation">
+        <div>
+          <h3><span class="n">7</span>Finding detail</h3>
+          <div class="meta">R01 · Single point of failure · Critical · confidence high</div>
+          <p>Why it matters, the suggested mitigation, exactly which evidence line it's grounded in, and the button to ask the AI for a concrete fix.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/09-fix-proposed.png" alt="AI-proposed fix for the Payments DB single point of failure">
+        <div>
+          <h3><span class="n">8</span>AI-proposed fix</h3>
+          <div class="meta">"Move Payments DB to a zone-redundant, geo-replicated managed Azure SQL tier…"</div>
+          <p>A specific, model-grounded proposal — not generic advice. <code>Apply to model &amp; re-score</code> patches the architecture model (never the real repository) and re-runs the rules immediately.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/10-fix-applied-rescored.png" alt="Score moved live from 36 to 48 after applying the fix">
+        <div>
+          <h3><span class="n">9</span>Applied — score moves live</h3>
+          <div class="meta">Resilience 36 → 48 (D)</div>
+          <p>The toast is explicit that this changed the model, not the repository — SecureFlow proposes and demonstrates; a person still decides what ships.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <img src="walkthrough/screenshots/11-report-tab.png" alt="Printable report with executive summary and score history">
+        <div>
+          <h3><span class="n">10</span>Report</h3>
+          <div class="meta"><code>/api/projects/{id}/report</code> · Print / Save as PDF</div>
+          <p>The same scores, the full executive summary, and "since the first analysis" history — 43 → 48 Resilience over the session, 10 findings fixed. This is what a reviewer reads without opening the UI at all.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="future">
+      <h2>Demoing after this VM is gone</h2>
+      <p>Three constraints, stated plainly:</p>
+      <table>
+        <tr><th>Constraint</th><th>What it rules out</th></tr>
+        <tr><td>This VDI will be wiped</td><td>Anything that only exists on local disk here — screenshots and video are already solved by committing them (above).</td></tr>
+        <tr><td>The AI key only exists on this VM</td><td>Running a <em>new</em> scan, with a <em>new</em> input, anywhere else — the AI call would fail with no key.</td></tr>
+        <tr><td>Only <code>git push</code> is allowed out of this machine</td><td>No uploading to cloud storage, no deploying a server elsewhere, no emailing files.</td></tr>
+      </table>
+      <p>The video solves "show it once, anywhere, to anyone" — it needs nothing but a browser. But if you want to show the <em>running app</em> again — click around live, open a different finding, show the blast radius on a different node — you need the server actually running, and that means the AI calls it already made need to work <strong>without the key</strong>. That turns out to be possible, and I tested it for real before writing this.</p>
+
+      <div class="tip"><strong>Verified on this machine, just now:</strong> I started a second copy of the server with the real key replaced by the placeholder string <code>"placeholder-no-real-key-needed"</code>, offline mode forced on, and a cache folder containing only 7 small JSON files (no screenshots, no code, just recorded AI responses). I then ran <code>secureflow diagram northbank.vsdx</code> fresh against it. Model, AI review and the fix proposal <strong>all replayed correctly</strong> — same scores, same fix text, same everything — and the project's own log recorded it honestly: <code>Replayed analyze from cache (749cf0d0)…</code> and <code>Replayed fix from cache (0b08016d)…</code>. No network call was made, and none could have succeeded with that key even if attempted.</div>
+    </section>
+
+    <section id="recipe">
+      <h2>The offline-replay recipe</h2>
+      <p>On any machine with just the <strong>.NET 10 runtime</strong> (no API key, no network needed) — a judge's laptop, a conference room PC, anything:</p>
+      <ol>
+        <li>
+          <strong>Clone the repo</strong> (public GitHub access is all this needs):
+          <pre>git clone https://github.com/skriss03/SecureFlow.git
+cd SecureFlow
+git checkout feature/tool-agnostic-diagram-import   <span class="c"># or wherever this lands after review</span></pre>
+        </li>
+        <li>
+          <strong>Point the server at the seed cache and force offline mode.</strong> The values below must match exactly what the cache was recorded under — see "Why this works".
+          <pre><span class="c"># PowerShell</span>
+$env:SECUREFLOW_AI_OFFLINE = '1'
+$env:Ai__CacheDir = (Resolve-Path samples\demo-replay-cache)
+$env:Ai__Provider = 'foundry'
+$env:Ai__FoundryDeploymentName = 'claude-opus-5'
+$env:Ai__FoundryResourceName = 'placeholder'
+$env:Ai__AnthropicApiKey = 'placeholder'</pre>
+        </li>
+        <li>
+          <strong>Run it:</strong>
+          <pre>dotnet run --project src/SecureFlow.Api</pre>
+          Health check should show <code>"offline":true,"ai":{"available":true}</code> — available with a placeholder key, because nothing is actually calling out.
+        </li>
+        <li>
+          <strong>Scan the same file again</strong> and it replays instead of failing:
+          <pre>dotnet run --project src/SecureFlow.Cli -- diagram samples/diagrams/northbank.vsdx --open</pre>
+          You get the identical report this walkthrough shows: Resilience 36 (F), Security 74 (C), the same 42 findings, and the same AI-proposed fix for Payments DB — all without a real key anywhere on the machine.
+        </li>
+      </ol>
+      <div class="warn">This exact recipe only reproduces <strong>this one scenario</strong> (the NorthBank <code>.vsdx</code> upload, its AI review, and the fix for the Payments DB single point of failure). Click into a <em>different</em> finding's fix, or upload a <em>different</em> file, and you'll get a clean, honest <code>Offline mode: no cached response — run once online to record it</code> error rather than a silent failure or a fake answer. See "Adding more scenarios" to extend what's covered before access is lost.</div>
+    </section>
+
+    <section id="why">
+      <h2>Why this works</h2>
+      <p>Every AI call in SecureFlow goes through a <strong>content-addressed replay cache</strong> (<code>src/SecureFlow.Ai/Caching/ReplayCache.cs</code>) — it already exists for a different reason (surviving a flaky network during a live demo), and it happens to solve this problem too:</p>
+      <ul>
+        <li>The cache key is a hash of the operation, <strong>the exact provider name string</strong> (e.g. <code>claude-opus-5 (Microsoft Foundry)</code>), and the real request content (the model, the digest, the finding). It is <em>not</em> a hash of the API key — the key never enters the key material at all.</li>
+        <li>With <code>SECUREFLOW_AI_OFFLINE=1</code>, a cache <strong>hit</strong> returns the recorded response; a cache <strong>miss</strong> throws a clear error instead of ever attempting the network — so there is no way for it to accidentally "half work" with a bad key.</li>
+        <li>The provider classes only check that a key <em>string is non-empty</em> at startup (so the app can start at all); they never validate it until a real network call is attempted — which offline mode guarantees never happens for a cached scenario.</li>
+        <li>Because the provider <em>name</em> is part of the key, the offline machine's <code>Ai:Provider</code>, model and deployment-name settings must match what was recorded exactly — that's why the recipe above pins them.</li>
+      </ul>
+      <p>I checked every file in <code>samples/demo-replay-cache/</code> for anything secret-shaped (API key patterns, bearer tokens) before committing them — they contain only the operation name, the provider name, a timestamp, and the AI's own response text.</p>
+    </section>
+
+    <section id="expand">
+      <h2>Adding more scenarios — do this before access is lost</h2>
+      <p>The cache only grows while a real key still works, which is <strong>only on this VM, only until it's wiped</strong>. For every additional thing you might want to click on in a future offline demo (a different sample's AI review, a different fix, a repo scan's AI extraction), do this now:</p>
+      <ol>
+        <li>Run it for real, once, on this VM, with the real key (exactly as today).</li>
+        <li>Find the new file(s) it created in <code>src/SecureFlow.Api/data/cache/</code> (sorted by time, or <code>grep -l</code> for distinctive text as I did above).</li>
+        <li>Copy them into <code>samples/demo-replay-cache/</code> and commit.</li>
+      </ol>
+      <p>Each file is a few KB of text — there's no practical reason not to be generous here before this environment disappears.</p>
+    </section>
+
+    <section id="limits">
+      <h2>What this doesn't solve</h2>
+      <ul>
+        <li><strong>A brand-new scan of a file nobody has fed it before</strong> still needs a real AI key. Offline replay is a rehearsed demo, not a general substitute for having a key.</li>
+        <li><strong>Deterministic-only work has no such limit.</strong> Every structured diagram format (draw.io, Mermaid, PlantUML, Structurizr, Visio, Excalidraw, Gliffy), the 26 resilience/STRIDE rules, scoring and blast-radius simulation need no AI at all, on any machine, forever — only the AI review and the AI-proposed fixes are cache-dependent.</li>
+        <li><strong>CVE scanning</strong> (OSV.dev) is a real network call with no replay cache today, and would need actual internet access (not an API key) to run fresh on another machine.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer style="text-align:center;color:var(--muted);font-size:.85rem;padding:24px 16px 40px;">
+  SecureFlow local walkthrough · recorded 2026-10-07 · screenshots and video in <code>docs/walkthrough/</code> · replay seed in <code>samples/demo-replay-cache/</code>
+</footer>
+</body>
+</html>

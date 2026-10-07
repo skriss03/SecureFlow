@@ -1,0 +1,594 @@
+{
+  "operation": "extract-document",
+  "provider": "claude-opus-5 (Microsoft Foundry)",
+  "createdAt": "2026-10-07T07:56:33.6512959+00:00",
+  "response": {
+    "name": "NorthBank Payments",
+    "description": "Customer-facing payments platform: a mobile/web banking client calls an Azure API Management gateway which fronts a .NET Payments API, with fraud checking, a SQL payments database, and asynchronous settlement via a Service Bus queue and worker that reaches out to the card networks.",
+    "components": [
+      {
+        "id": "customer",
+        "name": "Customer (Mobile \u0026 Web banking)",
+        "type": "User",
+        "tier": "external",
+        "description": "End user accessing the bank via mobile and web banking clients.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": null,
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Customer\n(Mobile \u0026 Web banking)"
+          }
+        ]
+      },
+      {
+        "id": "api-gateway",
+        "name": "API Gateway (Azure APIM)",
+        "type": "Gateway",
+        "tier": "edge",
+        "description": "Azure API Management gateway in the DMZ fronting the Payments API.",
+        "props": {
+          "replicas": 2,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure API Management",
+          "notes": [
+            "Label shows x2 instances"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "API Gateway\n(Azure APIM)\nx2"
+          }
+        ]
+      },
+      {
+        "id": "payments-api",
+        "name": "Payments API (.NET)",
+        "type": "Api",
+        "tier": "app",
+        "description": ".NET service handling payment requests; calls fraud service, database, queue, key vault and monitoring.",
+        "props": {
+          "replicas": 2,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET",
+          "notes": [
+            "Label shows x2 instances"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Payments API\n(.NET)\nx2"
+          }
+        ]
+      },
+      {
+        "id": "fraud-service",
+        "name": "Fraud Service (Python)",
+        "type": "Api",
+        "tier": "app",
+        "description": "Python service performing fraud checks for the Payments API.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Python",
+          "notes": [
+            "Label shows x1 instance"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Fraud Service\n(Python)\nx1"
+          }
+        ]
+      },
+      {
+        "id": "settlement-queue",
+        "name": "Settlement Queue (Service Bus)",
+        "type": "Queue",
+        "tier": "app",
+        "description": "Azure Service Bus queue buffering settlement messages between the Payments API and the Settlement Worker.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Service Bus",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Settlement Queue\n(Service Bus)"
+          }
+        ]
+      },
+      {
+        "id": "settlement-worker",
+        "name": "Settlement Worker",
+        "type": "Worker",
+        "tier": "app",
+        "description": "Background consumer of the settlement queue that writes to the Payments DB and calls the card network.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": null,
+          "notes": [
+            "Label shows x1 instance"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Settlement Worker\nx1"
+          }
+        ]
+      },
+      {
+        "id": "payments-db",
+        "name": "Payments DB (SQL Server)",
+        "type": "Database",
+        "tier": "data",
+        "description": "SQL Server database storing payment records.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "SQL Server",
+          "notes": [
+            "Label shows x1 instance"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Payments DB\n(SQL Server)\nx1"
+          }
+        ]
+      },
+      {
+        "id": "key-vault",
+        "name": "Key Vault",
+        "type": "Secrets",
+        "tier": "platform",
+        "description": "Secrets store accessed by the Payments API using managed identity.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Key Vault",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Key Vault"
+          }
+        ]
+      },
+      {
+        "id": "monitoring",
+        "name": "Monitoring (App Insights)",
+        "type": "Monitoring",
+        "tier": "platform",
+        "description": "Application Insights receiving asynchronous telemetry from the Payments API.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Application Insights",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Monitoring\n(App Insights)"
+          }
+        ]
+      },
+      {
+        "id": "card-network",
+        "name": "Card Network (Visa / Mastercard)",
+        "type": "External",
+        "tier": "external",
+        "description": "External card networks receiving settlement calls from the Settlement Worker.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": null,
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "Card Network\n(Visa / Mastercard)"
+          }
+        ]
+      }
+    ],
+    "flows": [
+      {
+        "id": "f1",
+        "from": "customer",
+        "to": "api-gateway",
+        "protocol": "https",
+        "auth": "oauth",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Banking clients call the API gateway over HTTPS with OAuth.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "HTTPS OAuth"
+          }
+        ]
+      },
+      {
+        "id": "f2",
+        "from": "api-gateway",
+        "to": "payments-api",
+        "protocol": "https",
+        "auth": "jwt",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Gateway forwards requests to the Payments API over HTTPS with JWT.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "HTTPS JWT"
+          }
+        ]
+      },
+      {
+        "id": "f3",
+        "from": "payments-api",
+        "to": "fraud-service",
+        "protocol": "http",
+        "auth": "none",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": false,
+        "description": "Payments API calls the Fraud Service over plain HTTP with no authentication.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "HTTP no auth"
+          }
+        ]
+      },
+      {
+        "id": "f4",
+        "from": "payments-api",
+        "to": "payments-db",
+        "protocol": "sql",
+        "auth": null,
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Payments API reads and writes payment data via SQL.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "SQL"
+          }
+        ]
+      },
+      {
+        "id": "f5",
+        "from": "payments-api",
+        "to": "settlement-queue",
+        "protocol": "amqps",
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Payments API publishes settlement messages to the Service Bus queue.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "AMQPS publish"
+          }
+        ]
+      },
+      {
+        "id": "f6",
+        "from": "settlement-queue",
+        "to": "settlement-worker",
+        "protocol": "amqps",
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Settlement Worker subscribes to the settlement queue.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "AMQPS subscribe"
+          }
+        ]
+      },
+      {
+        "id": "f7",
+        "from": "settlement-worker",
+        "to": "payments-db",
+        "protocol": "sql",
+        "auth": null,
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Settlement Worker updates the Payments DB via SQL.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "SQL"
+          }
+        ]
+      },
+      {
+        "id": "f8",
+        "from": "settlement-worker",
+        "to": "card-network",
+        "protocol": "https",
+        "auth": "mtls",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Settlement Worker sends settlement requests to the card network over HTTPS with mTLS.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "HTTPS mTLS"
+          }
+        ]
+      },
+      {
+        "id": "f9",
+        "from": "payments-api",
+        "to": "key-vault",
+        "protocol": "https",
+        "auth": "managed-identity",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Payments API retrieves secrets from Key Vault using managed identity.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "HTTPS managed identity"
+          }
+        ]
+      },
+      {
+        "id": "f10",
+        "from": "payments-api",
+        "to": "monitoring",
+        "protocol": null,
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Payments API emits asynchronous telemetry to Application Insights (dashed arrow).",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": null,
+            "snippet": "async telemetry"
+          }
+        ]
+      }
+    ],
+    "trustBoundaries": [
+      {
+        "id": "internet",
+        "name": "Internet",
+        "componentIds": [
+          "customer",
+          "card-network"
+        ]
+      },
+      {
+        "id": "dmz",
+        "name": "DMZ",
+        "componentIds": [
+          "api-gateway"
+        ]
+      },
+      {
+        "id": "private-network",
+        "name": "Private Network",
+        "componentIds": [
+          "payments-api",
+          "fraud-service",
+          "settlement-queue",
+          "settlement-worker",
+          "payments-db",
+          "key-vault",
+          "monitoring"
+        ]
+      }
+    ],
+    "assumptions": [
+      "The \u0027Card Network (Visa / Mastercard)\u0027 box is drawn inside the \u0027Internet\u0027 frame, so it is placed in the internet trust boundary and typed External.",
+      "\u0027Key Vault\u0027 and \u0027Monitoring (App Insights)\u0027 boxes extend past the right edge of the page; they are assumed to belong to the \u0027Private Network\u0027 boundary they are horizontally aligned with.",
+      "The \u0027async telemetry\u0027 arrow is dashed and has no protocol label; protocol left null and isSync set to false based on the word \u0027async\u0027 and the dashed style.",
+      "The settlement queue publish/subscribe arrows are dashed, consistent with asynchronous messaging; isSync set to false for both.",
+      "SQL flows have no stated authentication or transport encryption; auth and encrypted left null.",
+      "\u0027x2\u0027 / \u0027x1\u0027 annotations are interpreted as instance/replica counts.",
+      "API Gateway (Azure APIM) and Customer are assumed publicly exposed because they sit in the DMZ/Internet zones; private-network components assumed not publicly exposed.",
+      "\u0027managed\u0027 is inferred as true for Azure PaaS services (APIM, Service Bus, Key Vault, App Insights) from their product names; Payments DB (SQL Server) left null as it may be IaaS.",
+      "No timeouts, retries, circuit breakers, backups, health checks, zones or regions are annotated on the diagram; those fields are null."
+    ]
+  }
+}

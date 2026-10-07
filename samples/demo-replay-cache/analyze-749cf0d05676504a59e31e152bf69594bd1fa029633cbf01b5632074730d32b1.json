@@ -1,0 +1,249 @@
+{
+  "operation": "analyze",
+  "provider": "claude-opus-5 (Microsoft Foundry)",
+  "createdAt": "2026-10-07T07:49:58.0883553+00:00",
+  "response": {
+    "executiveSummary": "NorthBank Payments lets customers initiate card payments from mobile and web banking: a gateway passes requests to a payments service, which checks fraud, records the payment in a SQL database, and queues the transaction for a worker that settles it with Visa/Mastercard. The design has the right shape, but almost every component behind the gateway runs as a single copy in a single location, and the payments database has no backup, no second zone and no audit logging \u2014 so one storage failure could mean permanent, unrecoverable loss of payment records. Second, the money-moving path has no timeouts, no retry discipline and no evidence of duplicate-protection, which in a payments system risks double-charging customers or stalled settlements that nobody notices. Third, the fraud check is reached over unencrypted HTTP with no authentication inside the network, which is both a control weakness and a compliance exposure for a regulated payment system. Adding database backups and redundancy, timeouts and idempotency on the settlement path, and securing the fraud call would remove the catastrophic-loss scenario and most of the realistic outage causes for a modest amount of engineering effort.",
+    "businessImpact": "The most likely bad day: the single Payments DB instance or its zone fails. Customers see payment failures across mobile and web immediately, settlement stops, and because the model shows no backup and no secondary region, recovery depends on rebuilding data from the card network and queue \u2014 hours to days, with some payment records potentially lost permanently and no audit log to reconstruct them. A second, more insidious scenario is a slow card network: with no timeouts or circuit breaker, the single settlement worker blocks, the queue backs up and payments silently stop settling until someone notices manually.",
+    "topRisks": [
+      {
+        "title": "The payments database is a single point of total, unrecoverable loss",
+        "why": "One SQL Server instance, in one zone, in one region, with no backups holds every payment record. Losing it stops all payments and destroys the financial record of transactions \u2014 a reportable regulatory event for a bank.",
+        "componentIds": [
+          "payments-db",
+          "payments-api",
+          "settlement-worker"
+        ],
+        "relatedFindingIds": [
+          "3a8f688e33",
+          "faf724c737",
+          "5be79dacd5",
+          "a96474e930",
+          "238da5b5e5",
+          "4957cf962d"
+        ]
+      },
+      {
+        "title": "Settlement path can stall or double-charge: single worker, no timeouts, no circuit breaker, no idempotency",
+        "why": "A single settlement worker calling Visa/Mastercard with no timeout or circuit breaker will block on a slow card network, halting all settlement; any retry added without an idempotency key risks charging customers twice.",
+        "componentIds": [
+          "settlement-worker",
+          "card-network",
+          "settlement-queue",
+          "payments-db"
+        ],
+        "relatedFindingIds": [
+          "5dcbb0abfd",
+          "e92940f44e",
+          "e13ecc40cb",
+          "f512f72fd7",
+          "c50c57f2f7",
+          "ffee890725",
+          "e14af0932c",
+          "27ecdb0fa7"
+        ]
+      },
+      {
+        "title": "Fraud check is an unauthenticated, unencrypted, single-instance dependency in the payment path",
+        "why": "Anything on the private network can read or forge fraud decisions over plain HTTP, and because it is one instance with no timeout, its failure or slowness takes down payment authorisation entirely.",
+        "componentIds": [
+          "fraud-service",
+          "payments-api"
+        ],
+        "relatedFindingIds": [
+          "ef704866bb",
+          "b193e6b6cf",
+          "618a99f49a",
+          "71a645a147",
+          "873b2cd965"
+        ]
+      },
+      {
+        "title": "Public entry point has no rate limiting, autoscaling or health checks",
+        "why": "A traffic spike, credential-stuffing run or expensive-request abuse against the gateway degrades or blocks genuine customer payments, and with no health checks bad instances keep receiving traffic.",
+        "componentIds": [
+          "api-gateway",
+          "payments-api"
+        ],
+        "relatedFindingIds": [
+          "9989877d0a",
+          "8ae438228a",
+          "2dad86111c",
+          "04b7beca63",
+          "5f3dba7fcc",
+          "a5dd378178",
+          "6abd816cb1"
+        ]
+      },
+      {
+        "title": "No end-to-end timeout or failure budget across the synchronous payment chain",
+        "why": "Gateway, payments service, fraud service, database and key vault are all called with unspecified timeouts, so one slow component consumes all request threads and turns a partial problem into a full customer-facing outage.",
+        "componentIds": [
+          "api-gateway",
+          "payments-api",
+          "payments-db",
+          "key-vault",
+          "fraud-service"
+        ],
+        "relatedFindingIds": [
+          "5e9f84d908",
+          "a5dd378178",
+          "618a99f49a",
+          "73140f383f",
+          "c168f87a98",
+          "7f239ec978",
+          "271d82d739"
+        ]
+      }
+    ],
+    "additionalFindings": [
+      {
+        "title": "Payment write and settlement publish are a dual write with no outbox or saga",
+        "category": "Resilience",
+        "tag": "Dual write / consistency",
+        "severity": "High",
+        "description": "Payments API writes the payment to Payments DB (f4) and separately publishes to Settlement Queue (f5). The model shows no transactional outbox, saga or reconciliation component, so a crash between the two leaves either a recorded payment that never settles or a settlement message with no record.",
+        "rationale": "In a payments system, divergence between the ledger and what was actually sent to the card network produces unsettled funds, customer disputes and manual reconciliation work that may not be detected for days.",
+        "mitigation": "Use a transactional outbox: write the payment and the settlement intent in one database transaction, and have a relay publish to the queue. Add a daily reconciliation job comparing DB payment state to card network settlement results.",
+        "componentIds": [
+          "payments-api",
+          "payments-db",
+          "settlement-queue"
+        ],
+        "flowIds": [
+          "f4",
+          "f5"
+        ]
+      },
+      {
+        "title": "Card network calls have no idempotency key, so any retry can double-charge",
+        "category": "Resilience",
+        "tag": "Idempotency",
+        "severity": "High",
+        "description": "Settlement Worker calls Card Network over HTTPS/mTLS (f7) with no retry policy, no timeout and no idempotency semantics recorded. Service Bus redelivery after a worker crash will replay the same settlement message.",
+        "rationale": "Queue-based delivery is at-least-once by default; without a per-payment idempotency key enforced at the card network or a processed-message table, a single worker restart mid-settlement charges the customer twice and triggers chargebacks and regulatory attention.",
+        "mitigation": "Generate a stable idempotency key per payment, pass it on every card network request, and record processed message ids in Payments DB within the same transaction as the state update before acknowledging the message.",
+        "componentIds": [
+          "settlement-worker",
+          "card-network",
+          "payments-db"
+        ],
+        "flowIds": [
+          "f6",
+          "f7",
+          "f8"
+        ]
+      },
+      {
+        "title": "No dead-letter handling or poison-message strategy on the settlement queue",
+        "category": "Resilience",
+        "tag": "Dead letter",
+        "severity": "High",
+        "description": "Settlement Queue feeds a single Settlement Worker (f6) and the model shows no dead-letter queue, no alerting on queue depth and no operational path for messages that repeatedly fail.",
+        "rationale": "A single malformed or persistently failing settlement message can block or repeatedly cycle through the only worker, stalling settlement for all customers; without queue-depth alerting in Monitoring, the backlog grows invisibly.",
+        "mitigation": "Enable the Service Bus dead-letter queue with a max-delivery-count, alert on dead-letter count and active message age in App Insights, and define a documented replay procedure.",
+        "componentIds": [
+          "settlement-queue",
+          "settlement-worker",
+          "monitoring"
+        ],
+        "flowIds": [
+          "f6"
+        ]
+      },
+      {
+        "title": "Cardholder and payment data may reach the fraud service and telemetry in clear form",
+        "category": "Security",
+        "tag": "Information disclosure",
+        "severity": "High",
+        "description": "Payments API sends fraud-evaluation data to Fraud Service over plain HTTP with no auth (f3), and sends unspecified async telemetry to App Insights (f10). The model does not state what fields travel on either flow or whether telemetry is scrubbed.",
+        "rationale": "Fraud scoring typically carries PAN fragments, customer identifiers and device data. On the wire unencrypted it is readable by anything on the private network; in telemetry it becomes a long-lived, widely-accessible copy of regulated data, which is a PCI DSS and privacy failure.",
+        "mitigation": "Move f3 to HTTPS with mTLS or a service token. Define and enforce a telemetry redaction policy (no PAN, no full customer identifiers), and confirm App Insights retention and access controls meet payment data requirements.",
+        "componentIds": [
+          "payments-api",
+          "fraud-service",
+          "monitoring"
+        ],
+        "flowIds": [
+          "f3",
+          "f10"
+        ]
+      },
+      {
+        "title": "Shared Payments DB creates deployment and schema coupling between two services",
+        "category": "Resilience",
+        "tag": "Coupling",
+        "severity": "Medium",
+        "description": "Both Payments API and Settlement Worker write directly to Payments DB (f4, f8). A schema change for one requires coordinated release of the other, and concurrent writes to the same payment rows have no stated locking or ownership model.",
+        "rationale": "Shared-database coupling turns routine releases into coordinated deployments and makes lost-update or state-conflict bugs likely on the exact rows that record whether money moved.",
+        "mitigation": "Define clear table ownership, use optimistic concurrency (row version) on payment state transitions, and treat schema changes as expand-contract with both services released in a defined order.",
+        "componentIds": [
+          "payments-api",
+          "settlement-worker",
+          "payments-db"
+        ],
+        "flowIds": [
+          "f4",
+          "f8"
+        ]
+      },
+      {
+        "title": "Key Vault is a hard synchronous dependency on every request path with no caching",
+        "category": "Resilience",
+        "tag": "Hard dependency",
+        "severity": "Medium",
+        "description": "Payments API calls Key Vault synchronously (f9) with no timeout, no retry and no evidence of secret caching. Key Vault is modeled as a single instance that one critical service depends on.",
+        "rationale": "Key Vault throttles under high request rates. Fetching secrets per request with no local cache turns a vault throttle or brief outage into a total payment outage, and a cold start after a vault incident becomes a thundering herd.",
+        "mitigation": "Cache secrets and certificates in memory with a refresh interval, add a short timeout plus jittered retry, and fail open to the cached value when the vault is briefly unavailable.",
+        "componentIds": [
+          "payments-api",
+          "key-vault"
+        ],
+        "flowIds": [
+          "f9"
+        ]
+      },
+      {
+        "title": "No identity provider or token validation point is modeled for customer authentication",
+        "category": "Security",
+        "tag": "Spoofing",
+        "severity": "Medium",
+        "description": "Customer traffic is labelled OAuth at the gateway (f1) and JWT from gateway to Payments API (f2), but no identity provider, token issuer or validation configuration appears in the model, and Payments API does not independently verify caller identity.",
+        "rationale": "If the gateway is the only place tokens are checked, anything that reaches the private network can call Payments API directly and initiate payments. Without a modeled issuer there is also no stated key rotation or token lifetime policy.",
+        "mitigation": "Model and document the identity provider; validate JWT signature, issuer, audience and expiry inside Payments API as well as at the gateway, and restrict network access to Payments API to the gateway subnet.",
+        "componentIds": [
+          "api-gateway",
+          "payments-api",
+          "customer"
+        ],
+        "flowIds": [
+          "f1",
+          "f2"
+        ]
+      },
+      {
+        "title": "Single card network vendor integration with no fallback or degraded mode",
+        "category": "Resilience",
+        "tag": "Vendor concentration",
+        "severity": "Medium",
+        "description": "Settlement Worker integrates with one external Card Network endpoint (f7). The model shows no alternative acquirer, no store-and-forward mode and no customer-facing degradation behaviour when the network is unavailable.",
+        "rationale": "Card network or acquirer incidents do happen. With no defined degraded mode, the business choice during an outage \u2014 queue and settle later, or reject payments \u2014 is made ad hoc under pressure.",
+        "mitigation": "Define and test a store-and-forward degraded mode with a documented maximum backlog window, agree customer messaging, and assess whether a secondary acquirer route is commercially justified.",
+        "componentIds": [
+          "settlement-worker",
+          "card-network"
+        ],
+        "flowIds": [
+          "f7"
+        ]
+      }
+    ],
+    "quickWins": [
+      "Enable automated backups with point-in-time restore and transparent data encryption on Payments DB today, and run one restore test to prove the recovery time.",
+      "Apply APIM rate-limit and quota policies per subscriber and per IP on the API Gateway to stop abuse and traffic spikes reaching the payment path.",
+      "Set explicit timeouts on every synchronous call (gateway to API, API to fraud, API to DB, API to vault, worker to card network) \u2014 a configuration change that prevents a slow dependency becoming a full outage.",
+      "Switch the Payments API to Fraud Service call from HTTP to HTTPS with a service token or mTLS, removing clear-text payment data from the internal network.",
+      "Scale Fraud Service and Settlement Worker to at least two instances and add health-check endpoints so failures are detected and traffic is routed away automatically."
+    ]
+  }
+}

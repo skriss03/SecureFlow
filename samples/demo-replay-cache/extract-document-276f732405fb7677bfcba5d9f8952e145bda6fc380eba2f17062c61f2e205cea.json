@@ -1,0 +1,603 @@
+{
+  "operation": "extract-document",
+  "provider": "claude-opus-5 (Microsoft Foundry)",
+  "createdAt": "2026-10-07T07:58:49.4431819+00:00",
+  "response": {
+    "name": "NorthBank Payments",
+    "description": "Payment processing platform where customers reach an API gateway in a DMZ that fronts a .NET Payments API, which calls a fraud service, a SQL database, Key Vault and monitoring, and publishes settlement messages to a queue consumed by a worker that settles with the card network.",
+    "components": [
+      {
+        "id": "customer",
+        "name": "Customer (Mobile \u0026 Web banking)",
+        "type": "User",
+        "tier": "external",
+        "description": "End customer using mobile and web banking clients.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": null,
+          "notes": [
+            "Located in the Internet zone"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 18,
+            "snippet": "Customer (Mobile \u0026 Web banking)"
+          }
+        ]
+      },
+      {
+        "id": "card-network",
+        "name": "Card Network (Visa / Mastercard)",
+        "type": "External",
+        "tier": "external",
+        "description": "Third-party card scheme used for settlement.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Visa / Mastercard",
+          "notes": [
+            "Located in the Internet zone"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 19,
+            "snippet": "Card Network (Visa / Mastercard)"
+          }
+        ]
+      },
+      {
+        "id": "api-gateway",
+        "name": "API Gateway (Azure APIM)",
+        "type": "Gateway",
+        "tier": "edge",
+        "description": "Azure API Management instance fronting the Payments API, deployed in the DMZ.",
+        "props": {
+          "replicas": 2,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": true,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure API Management",
+          "notes": [
+            "Label shows \u0022x2\u0022 instance count"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 20,
+            "snippet": "API Gateway (Azure APIM) x2"
+          }
+        ]
+      },
+      {
+        "id": "payments-api",
+        "name": "Payments API (.NET)",
+        "type": "Api",
+        "tier": "app",
+        "description": "Core payments service exposing endpoints to the gateway.",
+        "props": {
+          "replicas": 2,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET",
+          "notes": [
+            "Label shows \u0022x2\u0022 instance count"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 21,
+            "snippet": "Payments API (.NET) x2"
+          }
+        ]
+      },
+      {
+        "id": "fraud-service",
+        "name": "Fraud Service (Python)",
+        "type": "Api",
+        "tier": "app",
+        "description": "Fraud scoring service called by the Payments API.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Python",
+          "notes": [
+            "Label shows \u0022x1\u0022 instance count"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 22,
+            "snippet": "Fraud Service (Python) x1"
+          }
+        ]
+      },
+      {
+        "id": "settlement-queue",
+        "name": "Settlement Queue (Service Bus)",
+        "type": "Queue",
+        "tier": "app",
+        "description": "Azure Service Bus queue carrying settlement messages.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Service Bus",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 23,
+            "snippet": "Settlement Queue (Service Bus)"
+          }
+        ]
+      },
+      {
+        "id": "settlement-worker",
+        "name": "Settlement Worker",
+        "type": "Worker",
+        "tier": "app",
+        "description": "Background consumer that settles payments with the card network.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": null,
+          "notes": [
+            "Label shows \u0022x1\u0022 instance count"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 24,
+            "snippet": "Settlement Worker x1"
+          }
+        ]
+      },
+      {
+        "id": "payments-db",
+        "name": "Payments DB (SQL Server)",
+        "type": "Database",
+        "tier": "data",
+        "description": "Relational store for payment records.",
+        "props": {
+          "replicas": 1,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "SQL Server",
+          "notes": [
+            "Label shows \u0022x1\u0022 instance count",
+            "No backup annotation on the diagram"
+          ]
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 25,
+            "snippet": "Payments DB (SQL Server) x1"
+          }
+        ]
+      },
+      {
+        "id": "key-vault",
+        "name": "Key Vault",
+        "type": "Secrets",
+        "tier": "platform",
+        "description": "Secret and key store accessed by the Payments API.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Key Vault",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 26,
+            "snippet": "Key Vault"
+          }
+        ]
+      },
+      {
+        "id": "monitoring",
+        "name": "Monitoring (App Insights)",
+        "type": "Monitoring",
+        "tier": "platform",
+        "description": "Telemetry, logs and metrics sink.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": false,
+          "managed": true,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": "Azure Application Insights",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 27,
+            "snippet": "Monitoring (App Insights)"
+          }
+        ]
+      }
+    ],
+    "flows": [
+      {
+        "id": "f1",
+        "from": "customer",
+        "to": "api-gateway",
+        "protocol": "https",
+        "auth": "oauth",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Customer traffic from the internet into the DMZ gateway.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 8,
+            "snippet": "HTTPS OAuth"
+          }
+        ]
+      },
+      {
+        "id": "f2",
+        "from": "api-gateway",
+        "to": "payments-api",
+        "protocol": "https",
+        "auth": "jwt",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Gateway forwards requests to the Payments API in the private network.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 9,
+            "snippet": "HTTPS JWT"
+          }
+        ]
+      },
+      {
+        "id": "f3",
+        "from": "payments-api",
+        "to": "fraud-service",
+        "protocol": "http",
+        "auth": "none",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": false,
+        "description": "Fraud check call, unencrypted and unauthenticated per label.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 10,
+            "snippet": "HTTP no auth"
+          }
+        ]
+      },
+      {
+        "id": "f4",
+        "from": "payments-api",
+        "to": "payments-db",
+        "protocol": "sql",
+        "auth": null,
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Payments API reads/writes payment data.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 11,
+            "snippet": "SQL"
+          }
+        ]
+      },
+      {
+        "id": "f5",
+        "from": "payments-api",
+        "to": "settlement-queue",
+        "protocol": "amqps",
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Payments API publishes settlement messages (dashed arrow = async).",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 12,
+            "snippet": "AMQPS publish"
+          }
+        ]
+      },
+      {
+        "id": "f6",
+        "from": "settlement-queue",
+        "to": "settlement-worker",
+        "protocol": "amqps",
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Settlement Worker subscribes to the queue (dashed arrow = async).",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 13,
+            "snippet": "AMQPS subscribe"
+          }
+        ]
+      },
+      {
+        "id": "f7",
+        "from": "settlement-worker",
+        "to": "card-network",
+        "protocol": "https",
+        "auth": "mtls",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Outbound settlement call from the private network to the card scheme.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 14,
+            "snippet": "HTTPS mTLS"
+          }
+        ]
+      },
+      {
+        "id": "f8",
+        "from": "settlement-worker",
+        "to": "payments-db",
+        "protocol": "sql",
+        "auth": null,
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Worker updates settlement state in the Payments DB.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 15,
+            "snippet": "SQL"
+          }
+        ]
+      },
+      {
+        "id": "f9",
+        "from": "payments-api",
+        "to": "key-vault",
+        "protocol": "https",
+        "auth": "managed-identity",
+        "isSync": true,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": true,
+        "description": "Payments API retrieves secrets using a managed identity.",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 16,
+            "snippet": "HTTPS managed identity"
+          }
+        ]
+      },
+      {
+        "id": "f10",
+        "from": "payments-api",
+        "to": "monitoring",
+        "protocol": null,
+        "auth": null,
+        "isSync": false,
+        "timeoutMs": null,
+        "retries": null,
+        "circuitBreaker": null,
+        "encrypted": null,
+        "description": "Asynchronous telemetry export (dashed arrow).",
+        "evidence": [
+          {
+            "source": "image",
+            "path": null,
+            "line": 17,
+            "snippet": "async telemetry"
+          }
+        ]
+      }
+    ],
+    "trustBoundaries": [
+      {
+        "id": "internet",
+        "name": "Internet",
+        "componentIds": [
+          "customer",
+          "card-network"
+        ]
+      },
+      {
+        "id": "dmz",
+        "name": "DMZ",
+        "componentIds": [
+          "api-gateway"
+        ]
+      },
+      {
+        "id": "private-network",
+        "name": "Private Network",
+        "componentIds": [
+          "payments-api",
+          "fraud-service",
+          "settlement-queue",
+          "settlement-worker",
+          "payments-db",
+          "key-vault",
+          "monitoring"
+        ]
+      }
+    ],
+    "assumptions": [
+      "Evidence source recorded as \u0022image\u0022 because the schema enum has no \u0022svg\u0022 value; the input was SVG markup.",
+      "Boundary membership derived from shape coordinates falling inside the dashed zone rectangles (Internet x12-238/y164-588, DMZ x242-468/y164-308, Private Network x472-1158/y24-588).",
+      "Customer modelled as a User and Card Network as an External third party; both sit in the Internet zone.",
+      "Fraud Service typed as Api (a service with endpoints called synchronously by the Payments API); Settlement Worker typed as Worker because it consumes queue messages.",
+      "\u0022x2\u0022 / \u0022x1\u0022 labels interpreted as instance/replica counts.",
+      "Solid arrows assumed synchronous request/response; dashed arrows (publish, subscribe, telemetry) assumed asynchronous.",
+      "Flow f3 marked encrypted=false and auth=none based on the literal label \u0022HTTP no auth\u0022.",
+      "HTTPS/AMQPS flows assumed encrypted in transit; SQL flows left with encrypted=null since the diagram does not say.",
+      "API Gateway assumed publicly exposed because it receives traffic directly from the Internet zone; all Private Network components assumed not publicly exposed.",
+      "Azure APIM, Service Bus, Key Vault and App Insights assumed cloud-managed services based on their product names.",
+      "No backup, health-check, autoscale, zone/region, timeout or retry annotations appear on the diagram, so those fields are null.",
+      "Telemetry flow f10 has no protocol label, so protocol is null.",
+      "System name taken from the diagram title text \u0022NorthBank Payments\u0022."
+    ]
+  }
+}

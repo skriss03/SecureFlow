@@ -1,0 +1,210 @@
+{
+  "operation": "extract-document",
+  "provider": "claude-opus-5 (Microsoft Foundry)",
+  "createdAt": "2026-10-07T08:03:45.1001438+00:00",
+  "response": {
+    "name": "SecureFlow",
+    "description": "A .NET solution composed of a core library, an AI component, an ingestion component, an HTTP API and a CLI, with one unit-test project. The solution file lists projects only; no runtime topology, protocols or dependencies are declared.",
+    "components": [
+      {
+        "id": "secureflow-core",
+        "name": "SecureFlow.Core",
+        "type": "Worker",
+        "tier": "app",
+        "description": "Core project of the solution; most likely a shared domain/logic library rather than a hosted service.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": null,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET (C# project)",
+          "notes": [
+            "Schema has no \u0027Library\u0027 type; mapped to Worker as the closest non-endpoint internal component."
+          ]
+        },
+        "evidence": [
+          {
+            "source": "repo",
+            "path": null,
+            "line": 3,
+            "snippet": "\u003CProject Path=\u0022src/SecureFlow.Core/SecureFlow.Core.csproj\u0022 /\u003E"
+          }
+        ]
+      },
+      {
+        "id": "secureflow-ai",
+        "name": "SecureFlow.Ai",
+        "type": "Worker",
+        "tier": "app",
+        "description": "AI-related project; purpose and runtime host are not stated in the solution file.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": null,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET (C# project)",
+          "notes": [
+            "No model provider, endpoint or hosting information in the input."
+          ]
+        },
+        "evidence": [
+          {
+            "source": "repo",
+            "path": null,
+            "line": 4,
+            "snippet": "\u003CProject Path=\u0022src/SecureFlow.Ai/SecureFlow.Ai.csproj\u0022 /\u003E"
+          }
+        ]
+      },
+      {
+        "id": "secureflow-ingest",
+        "name": "SecureFlow.Ingest",
+        "type": "Worker",
+        "tier": "app",
+        "description": "Ingestion project; assumed to read/parse inputs for the system. No source or sink declared.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": null,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET (C# project)",
+          "notes": []
+        },
+        "evidence": [
+          {
+            "source": "repo",
+            "path": null,
+            "line": 5,
+            "snippet": "\u003CProject Path=\u0022src/SecureFlow.Ingest/SecureFlow.Ingest.csproj\u0022 /\u003E"
+          }
+        ]
+      },
+      {
+        "id": "secureflow-api",
+        "name": "SecureFlow.Api",
+        "type": "Api",
+        "tier": "app",
+        "description": "HTTP API project of the solution. No endpoints, auth or exposure details are declared in the solution file.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": null,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET (C# project)",
+          "notes": [
+            "Typed as Api based on the project name suffix \u0027.Api\u0027 only."
+          ]
+        },
+        "evidence": [
+          {
+            "source": "repo",
+            "path": null,
+            "line": 6,
+            "snippet": "\u003CProject Path=\u0022src/SecureFlow.Api/SecureFlow.Api.csproj\u0022 /\u003E"
+          }
+        ]
+      },
+      {
+        "id": "secureflow-cli",
+        "name": "SecureFlow.Cli",
+        "type": "User",
+        "tier": "edge",
+        "description": "Command-line client of the solution, operated by a human user.",
+        "props": {
+          "replicas": null,
+          "zones": null,
+          "regions": null,
+          "hasBackup": null,
+          "hasHealthCheck": null,
+          "autoscale": null,
+          "encryptionAtRest": null,
+          "publiclyExposed": null,
+          "managed": null,
+          "rateLimited": null,
+          "auditLogging": null,
+          "inputValidation": null,
+          "hardcodedSecrets": null,
+          "technology": ".NET (C# project)",
+          "notes": [
+            "Mapped to User as the human-driven client entry point; the schema has no CLI type."
+          ]
+        },
+        "evidence": [
+          {
+            "source": "repo",
+            "path": null,
+            "line": 7,
+            "snippet": "\u003CProject Path=\u0022src/SecureFlow.Cli/SecureFlow.Cli.csproj\u0022 /\u003E"
+          }
+        ]
+      }
+    ],
+    "flows": [],
+    "trustBoundaries": [
+      {
+        "id": "internet",
+        "name": "Internet / user side",
+        "componentIds": [
+          "secureflow-cli"
+        ]
+      },
+      {
+        "id": "internal",
+        "name": "Internal (/src/ solution folder)",
+        "componentIds": [
+          "secureflow-core",
+          "secureflow-ai",
+          "secureflow-ingest",
+          "secureflow-api"
+        ]
+      }
+    ],
+    "assumptions": [
+      "Input is a .NET solution file (.slnx), not a drawing; components were derived from \u003CProject\u003E entries rather than from boxes.",
+      "No edges, arrows or project references are present in the input, so no flows were modelled; runtime communication between the projects is unknown.",
+      "SecureFlow.Core, SecureFlow.Ai and SecureFlow.Ingest have no declared hosting model; they were typed as Worker because the schema has no \u0027Library\u0027/\u0027Component\u0027 type.",
+      "SecureFlow.Api was typed as Api purely from its name suffix; no endpoints, protocol, auth or public exposure are stated.",
+      "SecureFlow.Cli was modelled as a User (human-driven client) because the schema has no CLI/client type.",
+      "The test project tests/SecureFlow.Core.Tests (line 10) was excluded as it is not a deployable runtime component.",
+      "Trust boundaries were synthesised: the solution folders /src/ and /tests/ are organisational, not deployment boundaries, so default \u0027internet\u0027 (CLI user) and \u0027internal\u0027 boundaries were created.",
+      "All resilience, security and deployment properties (replicas, zones, backups, encryption, auth, rate limiting) are null because the input contains no such annotations.",
+      "Evidence source recorded as \u0027repo\u0027 with line numbers from the supplied file, since the input is text rather than a diagram export."
+    ]
+  }
+}
